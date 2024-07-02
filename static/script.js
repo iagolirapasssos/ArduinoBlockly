@@ -161,12 +161,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(() => workspace.updateToolbox(document.getElementById('toolbox')));
     });
 
-
     workspace.registerButtonCallback('createTypedVariable', function(button) {
         Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace(), null, ['Number', 'String', 'Boolean']);
         workspace.updateToolbox(document.getElementById('toolbox'));
     });
-
 
     let language = 'arduino';
 
@@ -333,8 +331,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }).then(response => response.json())
           .then(data => {
               console.log(data);
-              if (data.success) {
+              if (data.message) {
                   alert('Code uploaded successfully!');
+                  startSerialMonitor(port);
               } else {
                   alert('Failed to upload code.');
               }

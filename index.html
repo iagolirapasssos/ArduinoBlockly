@@ -40,7 +40,18 @@
     </header>
     <div class="container">
         <div class="editor-container">
-            <h2>Codeblocks</h2>
+            <!--<h2>Codeblocks</h2>-->
+            <label for="serial-port">Select Serial Port:</label>
+                <select id="serial-port">
+                    <option value="">Select a port</option>
+                </select>
+                <label for="board">Select Board:</label>
+                <select id="board">
+                    <option value="arduino:avr:uno">Arduino Uno</option>
+                    <option value="arduino:avr:mega">Arduino Mega</option>
+                </select>
+                <button id="upload-button">Upload to Arduino</button>
+                <p>
             <div id="blocklyDiv" class="blockly-area"></div>
             <xml id="toolbox" style="display: none">
                 <category name="Logic" colour="%{BKY_LOGIC_HUE}">
@@ -245,21 +256,11 @@
                     <button text="Send Extension" callbackKey="sendExtension"></button>
                 </category>
             </xml>
-            <h1>Arduino Blockly</h1>
+            <h1>Monitor Serial</h1>
             <div <div class="blocklyDiv">
-                <label for="serial-port">Select Serial Port:</label>
-                <select id="serial-port">
-                    <option value="">Select a port</option>
-                </select>
-                <label for="board">Select Board:</label>
-                <select id="board">
-                    <option value="arduino:avr:uno">Arduino Uno</option>
-                    <option value="arduino:avr:mega">Arduino Mega</option>
-                </select>
-                <button id="upload-button">Upload to Arduino</button>
-                <p>
+                
                 <div id="blocklyWorkspace">
-                    <div id="serialMonitor" style="height: 80%; width: 99%; overflow-y: scroll; background: #f1f1f1; padding: 0px;"></div>
+                    <div id="serialMonitor" class="serial-monitor"></div>
                 </div>
             </div>
             <input type="file" id="extensionInput" style="display:none;" />

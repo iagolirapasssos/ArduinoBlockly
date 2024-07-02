@@ -62,20 +62,26 @@ app.post('/upload', (req, res) => {
 });
 
 app.get('/serial', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
     const port = new SerialPort(req.query.port, { baudRate: 9600 });
     const parser = port.pipe(new Readline({ delimiter: '\r\n' }));
 
     parser.on('data', data => {
-        res.write(data + '\n');
+        res.write(`data: ${data}\n\n`);
     });
 
     port.on('error', err => {
         console.error('Error: ', err.message);
-        res.status(500).json({ error: err.message });
+        res.write(`event: error\ndata: ${err.message}\n\n`);
+        res.end();
     });
 
     req.on('close', () => {
         port.close();
+        res.end();
     });
 });
 

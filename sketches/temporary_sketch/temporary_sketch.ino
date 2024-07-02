@@ -7,5 +7,5 @@ void setup() {
   }
 
 void loop() {
-  Serial.println("oi");
+  Serial.println("Hello World!");
   }

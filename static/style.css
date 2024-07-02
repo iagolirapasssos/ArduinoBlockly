@@ -158,3 +158,15 @@ h2 {
 .terminal-container div {
     margin-bottom: 5px;
 }
+
+.serial-monitor {
+    height: 70%;
+    width: 98%;
+    overflow-y: scroll;
+    background: #f1f1f1;
+    color: #000;
+    padding: 10px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    font-family: 'Courier New', Courier, monospace;
+}
