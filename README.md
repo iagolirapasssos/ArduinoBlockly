@@ -1,255 +1,142 @@
-# ArduinoBlockly
+# Arduino Blockly IDE with Node.js: A Comprehensive Tutorial
 
-# Arduino Blockly IDE with Node.js: Installation and Usage Tutorial
+## Introduction
 
-This tutorial will guide you through the process of setting up and using the Arduino Blockly IDE with Node.js. This project allows you to list serial ports and compile Arduino code using Blockly.
+This tutorial will guide you through setting up and using the Arduino Blockly IDE with Node.js. Arduino Blockly IDE is a web-based visual programming environment that allows users to create Arduino code using Blockly, a visual programming language.
 
-## Prerequisites
+### Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
+Before we begin, ensure you have the following installed on your system:
+- Node.js
+- npm (Node Package Manager)
 
-- [Node.js](https://nodejs.org/) (v14 or later)
-- [npm](https://www.npmjs.com/get-npm)
+## Step 1: Setting Up the Project
 
-## Project Structure
+### 1.1 Clone the Repository
 
-The project structure should look like this:
+First, clone the Arduino Blockly IDE repository to your local machine:
 
-```
-ArduinoBlockly/
-├── app.js
-├── package.json
-└── public/
-    ├── index.html
-    ├── script.js
-    └── style.css
+```sh
+git clone https://github.com/yourusername/ArduinoBlockly.git
+cd ArduinoBlockly
 ```
 
-## Step 1: Initialize the Project
+### 1.2 Install Dependencies
 
-1. Create a new directory for your project:
+Navigate to the project directory and install the necessary dependencies using npm:
 
-   ```sh
-   mkdir ArduinoBlockly
-   cd ArduinoBlockly
-   ```
-
-2. Create the `package.json` file:
-
-   ```sh
-   npm init -y
-   ```
-
-3. Replace the contents of `package.json` with the following:
-
-   ```json
-   {
-     "name": "ArduinoBlockly",
-     "version": "1.0.0",
-     "description": "Projeto para listar portas seriais e compilar código Arduino usando Blockly",
-     "main": "app.js",
-     "scripts": {
-       "start": "node app.js"
-     },
-     "dependencies": {
-       "@blockly/theme-dark": "^7.0.1",
-       "@blockly/workspace-backpack": "^6.0.2",
-       "body-parser": "^1.20.2",
-       "child_process": "^1.0.2",
-       "express": "^4.19.2",
-       "jsdom": "^21.1.2",
-       "module-alias": "^2.2.3",
-       "serialport": "^9.2.8"
-     },
-     "author": "Francisco Iago Lira Passos",
-     "license": "MIT"
-   }
-   ```
-
-4. Install the dependencies:
-
-   ```sh
-   npm install
-   ```
-
-## Step 2: Create the Server (app.js)
-
-Create the `app.js` file in the root directory with the following content:
-
-```javascript
-const express = require('express');
-const bodyParser = require('body-parser');
-const { exec } = require('child_process');
-const SerialPort = require('serialport');
-const app = express();
-const port = 3000;
-
-app.use(bodyParser.json());
-app.use(express.static('public'));
-
-// Endpoint to list serial ports
-app.get('/ports', (req, res) => {
-  SerialPort.list()
-    .then(ports => {
-      res.json(ports);
-    })
-    .catch(err => {
-      res.status(500).send(err.message);
-    });
-});
-
-// Endpoint to compile and upload Arduino code
-app.post('/upload', (req, res) => {
-  const { code, port } = req.body;
-  // Save the code to a temporary file
-  const fs = require('fs');
-  fs.writeFileSync('temp.ino', code);
-  // Command to compile and upload the code
-  const cmd = `arduino-cli compile --fqbn arduino:avr:uno temp.ino && arduino-cli upload -p ${port} --fqbn arduino:avr:uno temp.ino`;
-  exec(cmd, (error, stdout, stderr) => {
-    if (error) {
-      res.status(500).send(error.message);
-      return;
-    }
-    res.send(stdout || stderr);
-  });
-});
-
-app.listen(port, () => {
-  console.log(`ArduinoBlockly app listening at http://localhost:${port}`);
-});
+```sh
+npm install
 ```
 
-## Step 3: Create the Frontend
+## Step 2: Understanding the Project Structure
 
-Create the `public` directory and add the following files:
+Here's a brief overview of the project structure:
 
-### `index.html`
+```
+ArduinoBlockly:
+├── app.js                   # Main server file
+├── Blocks Examples
+│   └── HelloWorld.xml       # Example Blockly XML file
+├── ExternalExtensions
+│   └── cryptograph_extension.js  # Example extension
+├── Figures
+│   ├── IDE01.png            # Screenshot of the IDE
+│   └── IDE02.png            # Screenshot of the IDE
+├── index.html               # Main HTML file
+├── LICENSE
+├── output.txt               # Example output file
+├── package.json             # npm configuration file
+├── package-lock.json        # npm lock file
+├── README.md
+├── sketches
+│   ├── sketches.ino         # Example Arduino sketch
+│   └── temporary_sketch
+│       └── temporary_sketch.ino  # Temporary Arduino sketch
+├── static                   # Static files directory
+│   ├── arduino_blocks.js    # Custom Blockly blocks
+│   ├── arduino_generator.js # Arduino code generator
+│   ├── custom_generators.js # Custom code generators
+│   ├── favicon.ico          # Favicon
+│   ├── script.js            # Custom scripts
+│   └── style.css            # Custom styles
+```
+
+## Step 3: Running the Application
+
+### 3.1 Start the Server
+
+To run the application, execute the following command in the project directory:
+
+```sh
+node app.js
+```
+
+By default, the server will start on port 3000. Open your web browser and navigate to `http://localhost:3000` to access the Arduino Blockly IDE.
+
+## Step 4: Using the Arduino Blockly IDE
+
+### 4.1 Creating a New Project
+
+1. Open the Arduino Blockly IDE in your web browser.
+2. You will see a blank workspace where you can start dragging and dropping Blockly blocks to create your Arduino code.
+
+### 4.2 Loading Example Blocks
+
+1. Click on the "Load Blocks" button.
+2. Select the `HelloWorld.xml` file from the `Blocks Examples` folder to load a simple example project.
+
+### 4.3 Generating Arduino Code
+
+1. Once you have created your block diagram, click the "Generate Code" button.
+2. The generated Arduino code will appear in the code editor panel.
+
+### 4.4 Saving and Uploading Your Code
+
+1. To save your generated code, click on the "Save Code" button.
+2. Save the file in the `sketches` folder or any desired location.
+3. Open the Arduino IDE and load the saved `.ino` file.
+4. Connect your Arduino board and upload the code.
+
+## Step 5: Adding Custom Blocks and Extensions
+
+### 5.1 Creating Custom Blocks
+
+To create custom blocks, edit the `static/arduino_blocks.js` file. Define your custom blocks using the Blockly API.
+
+```js
+Blockly.Blocks['custom_block'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("custom block");
+    this.setColour(230);
+    this.setTooltip("");
+    this.setHelpUrl("");
+  }
+};
+```
+
+### 5.2 Generating Code for Custom Blocks
+
+Add code generation logic for your custom blocks in the `static/custom_generators.js` file.
+
+```js
+Blockly.Arduino['custom_block'] = function(block) {
+  var code = 'custom code;\n';
+  return code;
+};
+```
+
+### 5.3 Adding External Extensions
+
+To include external extensions, place your JavaScript files in the `ExternalExtensions` folder and reference them in `index.html`.
 
 ```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arduino Blockly IDE</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-  <script src="script.js" defer></script>
-</head>
-<body>
-  <h1>Arduino Blockly IDE</h1>
-  <div id="blocklyDiv" style="height: 480px; width: 600px;"></div>
-  <button id="compile">Compile & Upload</button>
-  <pre id="output"></pre>
-</body>
-</html>
+<script src="ExternalExtensions/cryptograph_extension.js"></script>
 ```
-
-### `script.js`
-
-```javascript
-document.addEventListener('DOMContentLoaded', () => {
-  const blocklyDiv = document.getElementById('blocklyDiv');
-  const workspace = Blockly.inject(blocklyDiv, {
-    toolbox: {
-      "kind": "flyoutToolbox",
-      "contents": [
-        {
-          "kind": "block",
-          "type": "controls_if"
-        },
-        {
-          "kind": "block",
-          "type": "logic_compare"
-        },
-        {
-          "kind": "block",
-          "type": "math_number"
-        },
-        {
-          "kind": "block",
-          "type": "math_arithmetic"
-        },
-        {
-          "kind": "block",
-          "type": "text"
-        },
-        {
-          "kind": "block",
-          "type": "text_print"
-        }
-      ]
-    },
-    theme: Blockly.Themes.Dark
-  });
-
-  document.getElementById('compile').addEventListener('click', () => {
-    const code = Blockly.JavaScript.workspaceToCode(workspace);
-    const port = '/dev/ttyUSB0'; // Change this to your serial port
-    fetch('/upload', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ code, port })
-    })
-      .then(response => response.text())
-      .then(output => {
-        document.getElementById('output').textContent = output;
-      })
-      .catch(error => {
-        document.getElementById('output').textContent = error.message;
-      });
-  });
-});
-```
-
-### `style.css`
-
-```css
-body {
-  font-family: Arial, sans-serif;
-  background-color: #333;
-  color: #eee;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#blocklyDiv {
-  margin: 20px;
-  border: 1px solid #555;
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  margin: 10px;
-  cursor: pointer;
-}
-
-pre {
-  background-color: #222;
-  padding: 10px;
-  border: 1px solid #555;
-  width: 80%;
-  overflow-x: auto;
-}
-```
-
-## Step 4: Run the Application
-
-1. Start the application:
-
-   ```sh
-   npm start
-   ```
-
-2. Open your web browser and navigate to `http://localhost:3000`.
-
-You should see the Arduino Blockly IDE interface. You can create your Blockly program, and upon clicking "Compile & Upload," the code will be sent to the Arduino board via the specified serial port.
 
 ## Conclusion
 
-You've successfully set up and run the Arduino Blockly IDE with Node.js. This project allows you to visually create Arduino programs using Blockly and upload them to your Arduino board. Happy coding!
+Congratulations! You have successfully set up and started using the Arduino Blockly IDE with Node.js. This environment allows you to create Arduino projects visually using Blockly, making it easier for beginners and experienced developers alike.
+
+For more information and advanced customization, refer to the official Blockly and Arduino documentation. Happy coding!
