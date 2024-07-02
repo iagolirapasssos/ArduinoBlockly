@@ -49,6 +49,14 @@ document.addEventListener('DOMContentLoaded', function () {
         trashcan: true,
     });
 
+    // Definindo Blockly.Arduino caso não esteja definido
+    if (typeof Blockly.Arduino === 'undefined') {
+        Blockly.Arduino = new Blockly.Generator('Arduino');
+        Blockly.Arduino.addReservedWords('code');
+        Blockly.Arduino.ORDER_ATOMIC = 0;
+        Blockly.Arduino.ORDER_NONE = 99;
+    }
+
     Blockly.Variables.createVariableButtonHandler = function(workspace, opt_callback, opt_types) {
         Blockly.prompt('Enter a name for your variable:', '', function(text) {
             if (text) {
@@ -119,8 +127,6 @@ document.addEventListener('DOMContentLoaded', function () {
         hljs.highlightElement(output);
     }
 
-    workspace.addChangeListener(updateCode);
-
     document.getElementById('executeBtn').addEventListener('click', function () {
         const workspace = Blockly.getMainWorkspace();
         const codeOutput = Blockly.Arduino.workspaceToCode(workspace);
@@ -185,8 +191,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const xmlText = e.target.result;
-                    const xml = Blockly.Xml.textToDom(xmlText);
+                    const xml = Blockly.utils.xml.textToDom(xmlText);
                     Blockly.Xml.domToWorkspace(xml, workspace);
+                    refreshVariables(workspace);
                 };
                 reader.readAsText(file);
             }
@@ -301,13 +308,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    //ouvinte para mudanças nas variáveis
-    workspace.addChangeListener(function(event) {
-        if (event.type == Blockly.Events.VAR_CREATE || 
-            event.type == Blockly.Events.VAR_DELETE ||
-            event.type == Blockly.Events.CHANGE ||
-            event.type == Blockly.Events.VAR_RENAME) {
-            workspace.updateToolbox(document.getElementById('toolbox'));
+    function refreshVariables(workspace) {
+        const variables = Blockly.Variables.allUsedVarModels(workspace);
+        variables.sort((a, b) => a.name.localeCompare(b.name)); // Ordenar as variáveis alfabeticamente
+
+        workspace.getAllBlocks().forEach(block => {
+            if (typeof block.updateVariableFieldDropdown === 'function') {
+                block.updateVariableFieldDropdown();
+            }
+        });
+
+        if (workspace.toolbox_) {
+            workspace.toolbox_.refreshSelection();
         }
+    }
+
+    workspace.addChangeListener(function(event) {
+        if (event.type === Blockly.Events.BLOCK_CREATE || 
+            event.type === Blockly.Events.BLOCK_DELETE || 
+            event.type === Blockly.Events.BLOCK_CHANGE || 
+            event.type === Blockly.Events.VAR_CREATE || 
+            event.type === Blockly.Events.VAR_DELETE || 
+            event.type === Blockly.Events.VAR_RENAME) {
+            refreshVariables(workspace);
+        }
+        updateCode();
     });
+
+    workspace.addChangeListener(updateCode);
 });

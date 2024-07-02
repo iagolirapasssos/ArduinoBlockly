@@ -1,4 +1,15 @@
 // static/arduino_blocks.js
+Blockly.Blocks['text_print'] = {
+    init: function() {
+        this.appendValueInput("TEXT")
+            .setCheck(null)
+            .appendField(new Blockly.FieldDropdown([["println", "PRINTLN"], ["print", "PRINT"]]), "MODE");
+        this.setColour(160);
+        this.setTooltip("Prints text to the serial monitor.");
+        this.setHelpUrl("");
+    }
+};
+
 
 Blockly.Blocks['arduino_setup'] = {
     init: function() {
@@ -54,184 +65,6 @@ Blockly.Blocks['arduino_digital_read'] = {
     }
 };
 
-
-Blockly.Blocks['variables_global'] = {
-  init: function() {
-    this.appendValueInput("VALUE")
-        .setCheck(null)
-        .appendField(new Blockly.FieldVariable("item"), "VAR")
-        .appendField("=");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(330);
-    this.setTooltip("");
-    this.setHelpUrl("");
-  }
-};
-
-Blockly.Blocks['variables_local'] = {
-  init: function() {
-    this.appendValueInput("VALUE")
-        .setCheck(null)
-        .appendField("local")
-        .appendField(new Blockly.FieldVariable("item"), "VAR")
-        .appendField("=");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(330);
-    this.setTooltip("");
-    this.setHelpUrl("");
-  }
-};
-
-Blockly.defineBlocksWithJsonArray([ 
-  {
-    "type": "variables_declare_typed",
-    "message0": "Declare %1 %2 variable %3 type %4 as %5",
-    "args0": [
-      {
-        "type": "field_dropdown",
-        "name": "SCOPE",
-        "options": [
-          ["local", "LOCAL"],
-          ["global", "GLOBAL"]
-        ]
-      },
-      {
-        "type": "field_dropdown",
-        "name": "VAR_TYPE",
-        "options": [
-          ["number", "NUMBER"],
-          ["text", "TEXT"],
-          ["boolean", "BOOLEAN"]
-        ]
-      },
-      {
-        "type": "field_input",
-        "name": "VAR_NAME",
-        "text": "myVar"
-      },
-      {
-        "type": "field_dropdown",
-        "name": "TYPE",
-        "options": [
-          ["int", "INT"],
-          ["float", "FLOAT"],
-          ["long", "LONG"],
-          ["double", "DOUBLE"]
-        ]
-      },
-      {
-        "type": "input_value",
-        "name": "VALUE"
-      }
-    ],
-    "inputsInline": true,
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 330,
-    "tooltip": "Declare a typed variable",
-    "helpUrl": ""
-  }
-]);
-
-Blockly.Blocks['variables_declare_typed'] = {
-    init: function() {
-        this.appendDummyInput()
-            .appendField(new Blockly.FieldDropdown([
-                ["local", "LOCAL"],
-                ["global", "GLOBAL"]
-            ]), "SCOPE")
-            .appendField(new Blockly.FieldDropdown([
-                ["number", "NUMBER"],
-                ["text", "TEXT"],
-                ["boolean", "BOOLEAN"]
-            ]), "VAR_TYPE")
-            .appendField(new Blockly.FieldTextInput("myVar"), "VAR_NAME")
-            .appendField(new Blockly.FieldDropdown([
-                ["int", "INT"],
-                ["float", "FLOAT"],
-                ["long", "LONG"],
-                ["double", "DOUBLE"]
-            ]), "TYPE");
-        this.appendValueInput("VALUE");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(330);
-        this.setTooltip("Declare a typed variable");
-        this.setHelpUrl("");
-    },
-    onchange: function(event) {
-        if (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.BLOCK_CHANGE) {
-            const varName = this.getFieldValue('VAR_NAME');
-            const varType = this.getFieldValue('VAR_TYPE');
-            const workspace = this.workspace;
-
-            let variable = workspace.getVariable(varName);
-            if (!variable) {
-                workspace.createVariable(varName, varType);
-            } else if (variable.type !== varType) {
-                workspace.deleteVariableById(variable.getId());
-                workspace.createVariable(varName, varType);
-            }
-        }
-    }
-};
-
-Blockly.defineBlocksWithJsonArray([ 
-  {
-    "type": "variables_get_typed",
-    "message0": "Get %1 variable %2",
-    "args0": [
-      {
-        "type": "field_dropdown",
-        "name": "VAR_TYPE",
-        "options": [
-          ["number", "NUMBER"],
-          ["text", "TEXT"],
-          ["boolean", "BOOLEAN"]
-        ]
-      },
-      {
-        "type": "field_variable",
-        "name": "VAR"
-      }
-    ],
-    "output": null,
-    "colour": 330,
-    "tooltip": "Get the value of a typed variable",
-    "helpUrl": ""
-  }
-]);
-
-Blockly.Blocks['variables_get_typed'] = {
-    init: function() {
-        this.appendDummyInput()
-            .appendField(new Blockly.FieldDropdown([
-                ["number", "NUMBER"],
-                ["text", "TEXT"],
-                ["boolean", "BOOLEAN"]
-            ]), "VAR_TYPE")
-            .appendField(new Blockly.FieldVariable(), "VAR");
-        this.setOutput(true, null);
-        this.setColour(230);
-        this.setTooltip("Get the value of a typed variable");
-        this.setHelpUrl("");
-    },
-    onchange: function(event) {
-        if (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.BLOCK_CHANGE) {
-            const varType = this.getFieldValue('VAR_TYPE');
-            const variableField = this.getField('VAR');
-            const variables = this.workspace.getVariablesOfType(varType);
-            const variableNames = variables.map(variable => [variable.name, variable.getId()]);
-            variableField.menuGenerator_ = variableNames;
-            if (!variables.some(variable => variable.getId() === variableField.getValue())) {
-                variableField.setValue(variableNames.length ? variableNames[0][1] : '');
-            }
-        }
-    }
-};
-
 Blockly.Blocks['math_number'] = {
   init: function() {
     this.appendDummyInput()
@@ -242,3 +75,177 @@ Blockly.Blocks['math_number'] = {
     this.setHelpUrl("");
   }
 };
+
+// Função para gerar IDs aleatórias
+function generateRandomId() {
+    return Math.random().toString(36).substring(2, 15);
+}
+
+//Math
+//Declare
+// Variable Declaration Blocks
+Blockly.Blocks['variables_declare_number'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Declare number")
+            .appendField(new Blockly.FieldTextInput("myVarNumber"), "VAR_NAME")
+            .appendField(new Blockly.FieldDropdown([
+                ["byte", "byte"],
+                ["int", "int"],
+                ["float", "float"],
+                ["long", "long"],
+                ["double", "double"]
+            ]), "TYPE");
+        this.appendValueInput("VALUE")
+            .setCheck("Number")
+            .appendField("value");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(330);
+        this.setTooltip("Declare a number variable");
+        this.setHelpUrl("");
+    },
+    onchange: function(event) {
+        if (event.type === Blockly.Events.BLOCK_CREATE || 
+            event.type === Blockly.Events.BLOCK_CHANGE || 
+            event.type === Blockly.Events.BLOCK_MOVE) {
+            const varName = this.getFieldValue('VAR_NAME');
+            const varType = 'NUMBER';
+            const workspace = this.workspace;
+            let variable = workspace.getVariable(varName, varType);
+            if (!variable) {
+                workspace.createVariable(varName, varType);
+            } else if (variable.type !== varType) {
+                workspace.deleteVariableById(variable.getId());
+                workspace.createVariable(varName, varType);
+            }
+        }
+    }
+};
+
+Blockly.Blocks['variables_declare_text'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Declare text")
+            .appendField(new Blockly.FieldTextInput("myVarText"), "VAR_NAME")
+            .appendField(new Blockly.FieldDropdown([
+                ["char", "char"],
+                ["String", "String"]
+            ]), "TYPE");
+        this.appendValueInput("VALUE")
+            .setCheck("String")
+            .appendField("value");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+        this.setTooltip("Declare a text variable");
+        this.setHelpUrl("");
+    },
+    onchange: function(event) {
+        if (event.type === Blockly.Events.BLOCK_CREATE || 
+            event.type === Blockly.Events.BLOCK_CHANGE || 
+            event.type === Blockly.Events.BLOCK_MOVE) {
+            const varName = this.getFieldValue('VAR_NAME');
+            const varType = 'TEXT';
+            const workspace = this.workspace;
+            let variable = workspace.getVariable(varName, varType);
+            if (!variable) {
+                workspace.createVariable(varName, varType);
+            } else if (variable.type !== varType) {
+                workspace.deleteVariableById(variable.getId());
+                workspace.createVariable(varName, varType);
+            }
+        }
+    }
+};
+
+Blockly.Blocks['variables_declare_boolean'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Declare boolean")
+            .appendField(new Blockly.FieldTextInput("myVarBool"), "VAR_NAME")
+            .appendField(new Blockly.FieldDropdown([
+                ["true", "true"],
+                ["false", "false"]
+            ]), "TYPE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Declare a boolean variable");
+        this.setHelpUrl("");
+    },
+    onchange: function(event) {
+        if (event.type === Blockly.Events.BLOCK_CREATE || 
+            event.type === Blockly.Events.BLOCK_CHANGE || 
+            event.type === Blockly.Events.BLOCK_MOVE) {
+            const varName = this.getFieldValue('VAR_NAME');
+            const varType = 'BOOLEAN';
+            const workspace = this.workspace;
+            let variable = workspace.getVariable(varName, varType);
+            if (!variable) {
+                workspace.createVariable(varName, varType);
+            } else if (variable.type !== varType) {
+                workspace.deleteVariableById(variable.getId());
+                workspace.createVariable(varName, varType);
+            }
+        }
+    }
+};
+
+//Get
+// Obtenção de Variáveis
+// Get Number Variable
+// Get Number Variable
+Blockly.Blocks['variables_get_number'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Get number")
+            .appendField(new Blockly.FieldVariable(
+                "myVarNumber",
+                null,
+                ['NUMBER'],
+                'NUMBER'
+            ), "VAR");
+        this.setOutput(true, "Number");
+        this.setColour(330);
+        this.setTooltip("Get the value of a number variable");
+        this.setHelpUrl("");
+    }
+};
+
+// Get Text Variable
+Blockly.Blocks['variables_get_text'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Get text")
+            .appendField(new Blockly.FieldVariable(
+                "myVarText",
+                null,
+                ['TEXT'],
+                'TEXT'
+            ), "VAR");
+        this.setOutput(true, "String");
+        this.setColour(230);
+        this.setTooltip("Get the value of a text variable");
+        this.setHelpUrl("");
+    }
+};
+
+// Get Boolean Variable
+Blockly.Blocks['variables_get_boolean'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Get boolean")
+            .appendField(new Blockly.FieldVariable(
+                "myVarBool",
+                null,
+                ['BOOLEAN'],
+                'BOOLEAN'
+            ), "VAR");
+        this.setOutput(true, "Boolean");
+        this.setColour(160);
+        this.setTooltip("Get the value of a boolean variable");
+        this.setHelpUrl("");
+    }
+};
+//END MATH

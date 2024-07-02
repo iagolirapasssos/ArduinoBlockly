@@ -15,11 +15,20 @@ Blockly.Arduino.ORDER_LOGICAL_AND = 11;   // &&
 Blockly.Arduino.ORDER_LOGICAL_OR = 12;    // ||
 Blockly.Arduino.ORDER_CONDITIONAL = 13;   // expr ? expr : expr
 Blockly.Arduino.ORDER_ASSIGNMENT = 14;    // = += -= *= /= ~/= %= <<= >>= &= ^= |=
+Blockly.Arduino.ORDER_YIELD = 15;         // yield
+Blockly.Arduino.ORDER_COMMA = 16;         // ,
 Blockly.Arduino.ORDER_NONE = 99;          // (...)
+
+Blockly.Arduino.reset = function() {
+    Blockly.Arduino.definitions_ = Object.create(null);
+    Blockly.Arduino.setups_ = Object.create(null);
+    Blockly.Arduino.loop_ = Object.create(null);
+};
 
 Blockly.Arduino.init = function(workspace) {
   Blockly.Arduino.nameDB_ = new Blockly.Names(Blockly.Arduino.RESERVED_WORDS_);
   Blockly.Arduino.nameDB_.setVariableMap(workspace.getVariableMap());
+  Blockly.Arduino.reset();
 
   // Create a dictionary of definitions to be printed before setups.
   Blockly.Arduino.definitions_ = Object.create(null);
@@ -33,12 +42,7 @@ Blockly.Arduino.init = function(workspace) {
   Blockly.Arduino.headerFunctions_ = Object.create(null);
   // Create a dictionary of functions from the user.
   Blockly.Arduino.userFunctions_ = Object.create(null);
-  if (!Blockly.Arduino.variableDB_) {
-    Blockly.Arduino.variableDB_ =
-        new Blockly.Names(Blockly.Arduino.RESERVED_WORDS_);
-  } else {
-    Blockly.Arduino.variableDB_.reset();
-  }
+  
 };
 
 Blockly.Arduino.finish = function(code) {
@@ -63,7 +67,7 @@ Blockly.Arduino.finish = function(code) {
   delete Blockly.Arduino.setups_;
   delete Blockly.Arduino.variables_;
   delete Blockly.Arduino.functions_;
-  Blockly.Arduino.variableDB_.reset();
+  Blockly.Arduino.reset();
 
   return setups.join('\n') + '\n' + variables.join('\n') + '\n' + functions.join('\n') + '\n\n' + code;
 };
@@ -78,14 +82,19 @@ Blockly.Arduino.blockToCode = function(block) {
   if (!block) {
     return '';
   }
+
   if (block.isEnabled() && !block.hasDisabledReason()) {
-    const func = this[block.type];
+    var func = this[block.type];
     if (typeof func !== 'function') {
-      throw Error('Language "Arduino" does not know how to generate code for block type "' +
-          block.type + '".');
+      throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
     }
-    const code = func.call(block, block);
-    return this.scrub_(block, code);
+    var code = func.call(this, block);
+
+    if (Array.isArray(code)) {
+      return code;
+    } else {
+      return [code, Blockly.Arduino.ORDER_NONE];
+    }
   } else {
     return this.scrub_(block, '');
   }
@@ -100,7 +109,7 @@ Blockly.Arduino.workspaceToCode = function(workspace) {
   this.init(workspace);
   const blocks = workspace.getTopBlocks(true);
   for (let i = 0, block; block = blocks[i]; i++) {
-    const line = this.blockToCode(block);
+    let line = this.blockToCode(block);
     if (line) {
       if (Array.isArray(line)) {
         line = line[0];
@@ -113,16 +122,26 @@ Blockly.Arduino.workspaceToCode = function(workspace) {
   return code;
 };
 
-// Example for a custom block generator
+Blockly.Arduino.prefixLines = function(text, prefix) {
+    return prefix + text.replace(/\n/g, '\n' + prefix);
+};
+
 Blockly.Arduino['arduino_setup'] = function(block) {
-  var statements_setup = Blockly.Arduino.statementToCode(block, 'SETUP');
-  return 'void setup() {\n' + statements_setup + '}\n';
+    var statements_setup = Blockly.Arduino.statementToCode(block, 'SETUP');
+    statements_setup = Blockly.Arduino.addLoopTrap(statements_setup, block.id) || '';
+    statements_setup = Blockly.Arduino.prefixLines(statements_setup, '  ');  // Add indentation
+    var code = 'void setup() {\n' + statements_setup + '}\n';
+    return code;
 };
 
 Blockly.Arduino['arduino_loop'] = function(block) {
-  var statements_loop = Blockly.Arduino.statementToCode(block, 'LOOP');
-  return 'void loop() {\n' + statements_loop + '}\n';
+    var statements_loop = Blockly.Arduino.statementToCode(block, 'LOOP');
+    statements_loop = Blockly.Arduino.addLoopTrap(statements_loop, block.id) || '';
+    statements_loop = Blockly.Arduino.prefixLines(statements_loop, '  ');  // Add indentation
+    var code = 'void loop() {\n' + statements_loop + '}\n';
+    return code;
 };
+
 
 
 /*
@@ -250,7 +269,7 @@ Blockly.Arduino['controls_flow_statements'] = function (block) {
     return xfix + code;
 };
 
-
+// MATH
 Blockly.Arduino['math_arithmetic'] = function(block) {
   // Basic arithmetic operators, and power.
   var OPERATORS = {
@@ -453,15 +472,16 @@ Blockly.Arduino['math_random_float'] = function (block) {
     return ['random(0.0, 1.0)', Blockly.Arduino.ORDER_FUNCTION_CALL];
 };
 
-Blockly.Arduino['math_number'] = function(block) {
-  var number = block.getFieldValue('NUM') || '0';
-  var code = parseFloat(number).toString(); // Garante a conversão correta para string
-  return [code, Blockly.Arduino.ORDER_ATOMIC];
-};
-
 //END MATH
 
 //TEXT
+Blockly.Arduino.quote_ = function(string) {
+    string = string.replace(/\\/g, '\\\\')
+                   .replace(/\n/g, '\\\n')
+                   .replace(/'/g, '\\\'');
+    return '"' + string + '"';
+};
+
 Blockly.Arduino['text'] = function (block) {
     var code = Blockly.Arduino.quote_(block.getFieldValue('TEXT'));
     return [code, Blockly.Arduino.ORDER_ATOMIC];
@@ -594,9 +614,25 @@ Blockly.Arduino['text_trim'] = function (block) {
     return [argument0 + operator, Blockly.Arduino.ORDER_UNARY_POSTFIX];
 };
 
-Blockly.Arduino['text_print'] = function (block) {
-    var argument0 = Blockly.Arduino.valueToCode(block, 'TEXT', Blockly.Arduino.ORDER_NONE) || '\'\'';
-    return 'Serial.println(' + argument0 + ');\n';
+Blockly.Arduino['text_print'] = function(block) {
+    var mode = block.getFieldValue('MODE');
+    var argument0 = Blockly.Arduino.valueToCode(block, 'TEXT', Blockly.Arduino.ORDER_NONE) || '""';
+
+    // Verificar se o value é um array e pegar o primeiro elemento
+    if (Array.isArray(argument0)) {
+        argument0 = argument0[0];
+    }
+
+    // Remover caracteres indesejados
+    if (typeof argument0 === 'string') {
+        argument0 = argument0.replace(/[()]/g, '');
+    }
+
+    if (mode === 'PRINTLN') {
+        return 'Serial.println(' + argument0 + ');\n';
+    } else {
+        return 'Serial.print(' + argument0 + ');\n';
+    }
 };
 
 Blockly.Arduino['text_prompt_ext'] = function (block) {
@@ -762,57 +798,89 @@ Blockly.Arduino['lists_sort'] = function (block) {
     return [code, Blockly.Arduino.ORDER_UNARY_POSTFIX];
 };
 
+Blockly.Arduino['math_number'] = function(block) {
+  const code = String(block.getFieldValue('NUM'));
+  console.log("math_number - Code: ", code);
+  return [code, Blockly.Arduino.ORDER_ATOMIC]
+};
+
+Blockly.FieldVariable.prototype.getVariableList = function(opt_type) {
+    var variableModelList = this.workspace.getVariablesOfType(opt_type || '');
+    variableModelList.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    var variableNames = variableModelList.map(variable => [variable.name, variable.getId()]);
+    return variableNames;
+};
+
 // Geradores de Variáveis
-Blockly.Arduino['variables_global'] = function(block) {
-  const varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
-  const argument0 = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ASSIGNMENT) || '0';
-  Blockly.Arduino.definitions_['var_' + varName] = 'int ' + varName + ' = ' + argument0 + ';';
-  return '';
+// Geradores de Variáveis
+Blockly.Arduino['variables_declare_number'] = function(block) {
+    var varName = block.getFieldValue('VAR_NAME');
+    var type = block.getFieldValue('TYPE');
+    var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '0';
+
+    if (typeof value === 'string') {
+      console.log('value: ', value)
+        value = value.replace(/[()]/g, '');
+    }
+
+    var code = type + ' ' + varName + ' = ' + value + ';\n';
+    Blockly.Arduino.definitions_['var_' + varName] = code;
+    return code;
 };
 
-Blockly.Arduino['variables_local'] = function(block) {
-  const varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
-  const argument0 = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ASSIGNMENT) || '0';
-  return 'int ' + varName + ' = ' + argument0 + ';\n';
+Blockly.Arduino['variables_declare_text'] = function(block) {
+    var varName = block.getFieldValue('VAR_NAME');
+    var type = block.getFieldValue('TYPE');
+    var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '""';
+
+    if (typeof value === 'string') {
+        value = value.replace(/[()]/g, '');
+    }
+
+    if (type === 'char') {
+        var arraySize = 15;
+        if (value.includes(',')) {
+            value = '{' + value + '}';
+        } else if (value.includes('"')) {
+            arraySize = Math.max(arraySize, value.length - 2 + 1);
+        }
+        var code = type + ' ' + varName + '[' + arraySize + '] = ' + value + ';\n';
+    } else {
+        var code = type + ' ' + varName + ' = ' + value + ';\n';
+    }
+
+    Blockly.Arduino.definitions_['var_' + varName] = code;
+    return code;
 };
 
-
-Blockly.Arduino['variables_set'] = function(block) {
-  const varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
-  const valueCodeTuple = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ASSIGNMENT) || ['0', Blockly.Arduino.ORDER_ATOMIC];
-  const argument0 = valueCodeTuple;
-  return varName + ' = ' + argument0 + ';\n';
+Blockly.Arduino['variables_declare_boolean'] = function(block) {
+    var varName = block.getFieldValue('VAR_NAME');
+    var value = block.getFieldValue('TYPE');
+    var code = 'bool ' + varName + ' = ' + value + ';\n';
+    Blockly.Arduino.definitions_['var_' + varName] = code;
+    return code;
 };
 
-
-Blockly.Arduino['variables_get'] = function(block) {
-  const code = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
-  return [code, Blockly.Arduino.ORDER_ATOMIC];
-};
-
-Blockly.Arduino['variables_declare_typed'] = function(block) {
-  var scope = block.getFieldValue('SCOPE');
-  var type = block.getFieldValue('TYPE');
-  var varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR_NAME'), Blockly.Variables.NAME_TYPE);
-  var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '0';
-
-  var code = '';
-  if (scope === 'LOCAL') {
-    code += type + ' ' + varName;
-  } else {
-    code += type + ' ' + varName;
-    Blockly.Arduino.definitions_['var_' + varName] = type + ' ' + varName + ';';
-  }
-
-  code += ' = ' + value + ';\n';
-  return code;
-};
-
-Blockly.Arduino['variables_get_typed'] = function(block) {
-    const varType = block.getFieldValue('VAR_TYPE');
-    const varName = Blockly.Arduino.variableDB_.getName(varType, Blockly.Names.NameType.VARIABLE);
+//Get
+// Gerador de código para obter variáveis do tipo número
+Blockly.Arduino['variables_get_number'] = function(block) {
+    var varName = Blockly.Arduino.nameDB_.getName(block.getFieldValue('VAR'), Blockly.Names.NameType.VARIABLE);
     return [varName, Blockly.Arduino.ORDER_ATOMIC];
 };
+
+// Gerador de código para obter variáveis do tipo texto
+Blockly.Arduino['variables_get_text'] = function(block) {
+    var varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    return [varName, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+
+// Gerador de código para obter variáveis do tipo booleano
+Blockly.Arduino['variables_get_boolean'] = function(block) {
+    var varName = Blockly.Arduino.variableDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    return [varName, Blockly.Arduino.ORDER_ATOMIC];
+};
+
 
 // Geradores de Funções
 Blockly.Arduino['procedures_defreturn'] = function(block) {
@@ -864,4 +932,39 @@ Blockly.Arduino['procedures_ifreturn'] = function(block) {
   }
   code += '}\n';
   return code;
+};
+
+Blockly.Generator.prototype.valueToCode = function(block, name, outerOrder) {
+  if (isNaN(outerOrder)) {
+    throw Error('Expecting valid order from block: ' + block);
+  }
+  var targetBlock = block.getInputTargetBlock(name);
+  if (!targetBlock) {
+    return ['', Blockly.Generator.ORDER_ATOMIC];
+  }
+  var tuple = this.blockToCode(targetBlock);
+  if (!Array.isArray(tuple)) {
+    throw TypeError('Expecting tuple from value block: ' + targetBlock.type);
+  }
+  var code = tuple[0];
+  var innerOrder = tuple[1];
+  if (isNaN(innerOrder)) {
+    throw Error('Expecting valid order from value block: ' + targetBlock.type);
+  }
+  if (code && outerOrder <= innerOrder) {
+    code = '(' + code + ')';
+  }
+  return [code, innerOrder];
+};
+
+Blockly.Generator.prototype.statementToCode = function(block, name) {
+    var targetBlock = block.getInputTargetBlock(name);
+    if (!targetBlock) {
+        return ''; // If there's no block, return empty string
+    }
+    var code = this.blockToCode(targetBlock);
+    if (!Array.isArray(code)) {
+        throw new Error('Expecting code from statement block: ' + (targetBlock && targetBlock.type));
+    }
+    return code[0];
 };
