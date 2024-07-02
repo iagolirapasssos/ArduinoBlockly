@@ -800,7 +800,6 @@ Blockly.Arduino['lists_sort'] = function (block) {
 
 Blockly.Arduino['math_number'] = function(block) {
   const code = String(block.getFieldValue('NUM'));
-  console.log("math_number - Code: ", code);
   return [code, Blockly.Arduino.ORDER_ATOMIC]
 };
 
@@ -812,15 +811,15 @@ Blockly.FieldVariable.prototype.getVariableList = function(opt_type) {
 };
 
 // Geradores de Variáveis
-// Geradores de Variáveis
 Blockly.Arduino['variables_declare_number'] = function(block) {
     var varName = block.getFieldValue('VAR_NAME');
     var type = block.getFieldValue('TYPE');
     var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '0';
 
-    if (typeof value === 'string') {
-      console.log('value: ', value)
-        value = value.replace(/[()]/g, '');
+    console.log('value: ', value)
+
+    if (typeof value[0] === 'string') {
+        value = value[0].replace(/[()]/g, '');
     }
 
     var code = type + ' ' + varName + ' = ' + value + ';\n';
