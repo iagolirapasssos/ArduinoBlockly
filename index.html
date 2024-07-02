@@ -246,26 +246,27 @@
                 </category>
             </xml>
             <h1>Arduino Blockly</h1>
-            <label for="serial-port">Select Serial Port:</label>
-            <select id="serial-port">
-                <option value="">Select a port</option>
-            </select>
-            <label for="board">Select Board:</label>
-            <select id="board">
-                <option value="arduino:avr:uno">Arduino Uno</option>
-                <option value="arduino:avr:mega">Arduino Mega</option>
-            </select>
-            <button id="upload-button">Upload to Arduino</button>
-            <div id="blocklyDiv" style="height: 480px; width: 600px;"></div>
+            <div <div class="blocklyDiv">
+                <label for="serial-port">Select Serial Port:</label>
+                <select id="serial-port">
+                    <option value="">Select a port</option>
+                </select>
+                <label for="board">Select Board:</label>
+                <select id="board">
+                    <option value="arduino:avr:uno">Arduino Uno</option>
+                    <option value="arduino:avr:mega">Arduino Mega</option>
+                </select>
+                <button id="upload-button">Upload to Arduino</button>
+                <p>
+                <div id="blocklyWorkspace">
+                    <div id="serialMonitor" style="height: 80%; width: 99%; overflow-y: scroll; background: #f1f1f1; padding: 0px;"></div>
+                </div>
+            </div>
             <input type="file" id="extensionInput" style="display:none;" />
         </div>
         <div class="output-container">
             <h2>Output</h2>
             <pre id="code-output" class="hljs language-cpp"></pre>
-        </div>
-        <div class="terminal-container">
-            <h2>Terminal</h2>
-            <div id="terminal"></div>
         </div>
     </div>
 </body>

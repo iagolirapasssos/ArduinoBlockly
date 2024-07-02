@@ -1,4 +1,29 @@
 // static/script.js
+function startSerialMonitor(selectedPort) {
+    const terminal = document.getElementById('serialMonitor');
+    terminal.innerHTML = ''; // Limpar o terminal
+
+    // Iniciar monitor serial
+    const eventSource = new EventSource(`/serial?port=${encodeURIComponent(selectedPort)}`);
+
+    eventSource.onmessage = function (event) {
+        const newLine = document.createElement('div');
+        newLine.textContent = event.data;
+        terminal.appendChild(newLine);
+        terminal.scrollTop = terminal.scrollHeight; // Rolagem automática
+    };
+
+    eventSource.onerror = function (error) {
+        console.error('Error in serial monitor:', error);
+        eventSource.close();
+    };
+
+    // Fechar monitor serial ao fechar a aba ou sair da página
+    window.addEventListener('beforeunload', function () {
+        eventSource.close();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     fetch('/ports')
         .then(response => response.json())
@@ -288,8 +313,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('executeBtn').addEventListener('click', () => {
         const code = Blockly.Arduino.workspaceToCode(workspace);
-        const port = document.getElementById('serialPort').value;
-        const board = document.getElementById('board').value;
+        const selectPort = document.getElementById('serial-port');
+        const selectBoard = document.getElementById('board');
+        const port = selectPort.value;
+        const board = selectBoard.value;
 
         if (!port) {
             alert('Please select a serial port');
