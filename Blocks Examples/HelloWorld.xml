@@ -1,0 +1,20 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="arduino_setup" id="J+Q.)]c6*eTsct1krKK#" x="130" y="70">
+    <statement name="SETUP">
+      <block type="serial_begin" id="~]1Nd.P)!EplRX;5IYRu">
+        <field name="BAUD_RATE">9600</field>
+        <next>
+          <block type="text_print" id="rl=.v`8Tdj8}V:ReVx.u">
+            <field name="MODE">PRINTLN</field>
+            <value name="TEXT">
+              <block type="text" id="fu#AoRtX~SV.@3^GYSDG">
+                <field name="TEXT">oi</field>
+              </block>
+            </value>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+  <block type="arduino_loop" id="fxws0F[AF6iUN)kazNcD" x="130" y="190"></block>
+</xml>

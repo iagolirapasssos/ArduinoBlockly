@@ -1,4 +1,64 @@
+// static/script.js
 document.addEventListener('DOMContentLoaded', function () {
+    fetch('/ports')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Available ports:', data);
+            const selectPort = document.getElementById('serial-port');
+            if (!selectPort) {
+                console.error('Dropdown element not found');
+                return;
+            }
+            data.forEach(port => {
+                const option = document.createElement('option');
+                option.value = port.path;
+                option.text = port.path;
+                selectPort.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching ports:', error);
+        });
+
+    document.getElementById('upload-button').addEventListener('click', function () {
+        const selectPort = document.getElementById('serial-port');
+        const selectBoard = document.getElementById('board');
+        if (!selectPort || !selectBoard) {
+            console.error('Dropdown element not found');
+            return;
+        }
+        const selectedPort = selectPort.value;
+        const selectedBoard = selectBoard.value;
+        if (!selectedPort || !selectedBoard) {
+            console.error('No port or board selected');
+            return;
+        }
+
+        const code = Blockly.Arduino.workspaceToCode(Blockly.getMainWorkspace());
+
+        // Send selected port, board, and code to the server
+        fetch('/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ port: selectedPort, board: selectedBoard, code }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Upload response:', data);
+            if (data.message) {
+                alert(data.message);
+                startSerialMonitor(selectedPort);
+            } else {
+                alert('Upload failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading to Arduino:', error);
+        });
+    });
+
     if (typeof Blockly === 'undefined') {
         console.error('Blockly is not defined.');
         return;
@@ -95,80 +155,165 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCode();
     };
 
-    function updateCode() {
-        Blockly.Arduino.init(Blockly.getMainWorkspace());
-        var code;
-        let languageClass;
-        let generator;
-        try {
-            switch (language) {
-                case 'arduino':
-                    generator = Blockly.Arduino;
-                    languageClass = 'language-cpp';
-                    break;
-                default:
-                    generator = Blockly.Arduino;
-                    languageClass = 'language-cpp';
-                    break;
-            }
+    //To generators
+    Blockly.Arduino.valueToCode = function(block, name, outerOrder) {
+      if (isNaN(outerOrder)) {
+        throw Error('Expecting valid order from block: ' + block);
+      }
+      var targetBlock = block.getInputTargetBlock(name);
+      if (!targetBlock) {
+        return ['', Blockly.Arduino.ORDER_ATOMIC];
+      }
 
-            generator.init(workspace);
-            code = generator.workspaceToCode(Blockly.getMainWorkspace());
+      var tuple = Blockly.Arduino.blockToCode(targetBlock);
+      if (!Array.isArray(tuple)) {
+        tuple = [tuple, Blockly.Arduino.ORDER_ATOMIC];
+      }
+      var code = tuple[0];
+      var innerOrder = tuple[1];
+      if (isNaN(innerOrder)) {
+        throw Error('Expecting valid order from value block: ' + targetBlock.type);
+      }
+      if (code && outerOrder <= innerOrder) {
+        code = '(' + code + ')';
+      }
+      return [code, innerOrder];
+    };
 
-        } catch (error) {
-            code = "// Error generating code: " + error.message;
-            languageClass = 'language-cpp';
-            console.error('Error generating code:', error);
+    Blockly.Arduino.statementToCode = function(block, name) {
+      var targetBlock = block.getInputTargetBlock(name);
+      if (!targetBlock) {
+        return ''; // Se não há bloco conectado, retorna string vazia
+      }
+      var code = Blockly.Arduino.blockToCode(targetBlock);
+      if (Array.isArray(code)) {
+        code = code[0]; // Usa o primeiro elemento do array se for um array
+      }
+      return code;
+    };
+
+    Blockly.Arduino.blockToCode = function(block) {
+      if (!block) {
+        return '';
+      }
+
+      if (block.isEnabled() && !block.hasDisabledReason()) {
+        var func = this[block.type];
+        if (typeof func !== 'function') {
+          throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
+        }
+        var code = func.call(this, block);
+
+        // Se code não for um array, transforma em uma tupla
+        if (!Array.isArray(code)) {
+          code = [code, Blockly.Arduino.ORDER_ATOMIC];
         }
 
-        const output = document.getElementById('code-output');
-        output.textContent = code;
-        output.className = 'hljs ' + languageClass;
-        hljs.highlightElement(output);
+        // Adiciona o código dos blocos conectados abaixo
+        var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+        var nextCode = this.blockToCode(nextBlock);
+        if (Array.isArray(nextBlock)) {
+            nextBlock = nextBlock[0];
+        }
+
+        if (Array.isArray(nextCode)) {
+            nextCode = nextCode[0];
+        }
+
+        return [code[0] + nextCode, code[1]];
+      } else {
+        return this.scrub_(block, '');
+      }
+    };
+
+    Blockly.Arduino.scrub_ = function(block, code) {
+      const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+      const nextCode = Blockly.Arduino.blockToCode(nextBlock);
+      return code + nextCode;
+    };
+
+    Blockly.Arduino.workspaceToCode = function(workspace) {
+      if (!workspace) {
+        console.warn('Blockly.Generator.workspaceToCode was called with an invalid workspace.');
+        return '';
+      }
+      var code = [];
+      this.init(workspace);
+      var blocks = workspace.getTopBlocks(true);
+      for (var i = 0, block; block = blocks[i]; i++) {
+        var line = this.blockToCode(block);
+        if (line) {
+          if (Array.isArray(line)) {
+            line = line[0];
+          }
+          code.push(line);
+        }
+      }
+      code = code.join('\n');
+      code = this.finish(code);
+      return code;
+    };
+
+    function updateCode() {
+      Blockly.Arduino.init(Blockly.getMainWorkspace());
+      var code;
+      let languageClass;
+      let generator;
+      try {
+        switch (language) {
+          case 'arduino':
+            generator = Blockly.Arduino;
+            languageClass = 'language-cpp';
+            break;
+          default:
+            generator = Blockly.Arduino;
+            languageClass = 'language-cpp';
+            break;
+        }
+
+        generator.init(workspace);
+        code = generator.workspaceToCode(Blockly.getMainWorkspace());
+
+      } catch (error) {
+        code = "// Error generating code: " + error.message;
+        languageClass = 'language-cpp';
+        console.error('Error generating code:', error);
+      }
+
+      const output = document.getElementById('code-output');
+      output.textContent = code;
+      output.className = 'hljs ' + languageClass;
+      hljs.highlightElement(output);
     }
 
-    document.getElementById('executeBtn').addEventListener('click', function () {
-        const workspace = Blockly.getMainWorkspace();
-        const codeOutput = Blockly.Arduino.workspaceToCode(workspace);
+    document.getElementById('executeBtn').addEventListener('click', () => {
+        const code = Blockly.Arduino.workspaceToCode(workspace);
+        const port = document.getElementById('serialPort').value;
+        const board = document.getElementById('board').value;
 
-        const terminal = document.getElementById('terminal');
-        terminal.innerHTML = '';
-
-        function terminalLog(msg) {
-            const messageElement = document.createElement('div');
-            messageElement.textContent = msg;
-            terminal.appendChild(messageElement);
+        if (!port) {
+            alert('Please select a serial port');
+            return;
         }
 
-        const originalConsoleLog = console.log;
-        console.log = function (...args) {
-            args.forEach(arg => terminalLog(String(arg)));
-            originalConsoleLog.apply(console, args);
-        };
-
-        const originalConsoleError = console.error;
-        console.error = function (...args) {
-            args.forEach(arg => terminalLog('Error: ' + String(arg)));
-            originalConsoleError.apply(console, args);
-        };
-
-        const originalAlert = window.alert;
-        window.alert = function (msg) {
-            terminalLog(String(msg));
-        };
-
-        try {
-            (function() {
-                eval(codeOutput);
-            })();
-        } catch (error) {
-            terminalLog('Error executing code: ' + error.message);
-            console.error('Error executing code:', error);
-        } finally {
-            console.log = originalConsoleLog;
-            console.error = originalConsoleError;
-            window.alert = originalAlert;
-        }
+        // Envie o código para o backend para compilar e enviar para o Arduino
+        fetch('/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ code, port, board })
+        }).then(response => response.json())
+          .then(data => {
+              console.log(data);
+              if (data.success) {
+                  alert('Code uploaded successfully!');
+              } else {
+                  alert('Failed to upload code.');
+              }
+          }).catch(error => {
+              console.error('Error uploading code:', error);
+          });
     });
 
     document.getElementById('saveBtn').addEventListener('click', function () {

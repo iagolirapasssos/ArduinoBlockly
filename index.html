@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -224,12 +225,38 @@
                     <block type="arduino_loop"></block>
                     <block type="arduino_digital_write"></block>
                     <block type="arduino_digital_read"></block>
-                    <!-- Add other Arduino blocks here -->
+                    <block type="serial_begin"></block>
+                    <block type="analog_read"></block>
+                    <block type="digital_read"></block>
+                    <block type="digital_write"></block>
+                    <block type="pin_mode"></block>
+                    <block type="analog_write"></block>
+                    <block type="analog_reference"></block>
+                    <block type="delay"></block>
+                    <block type="delay_microseconds"></block>
+                    <block type="micros"></block>
+                    <block type="millis"></block>
+                    <block type="no_tone"></block>
+                    <block type="tone"></block>
+                    <block type="pulse_in"></block>
+                    <block type="pulse_in_long"></block>
                 </category>
                 <category name="Extensions" colour="160" id="extensionsCategory">
                     <button text="Send Extension" callbackKey="sendExtension"></button>
                 </category>
             </xml>
+            <h1>Arduino Blockly</h1>
+            <label for="serial-port">Select Serial Port:</label>
+            <select id="serial-port">
+                <option value="">Select a port</option>
+            </select>
+            <label for="board">Select Board:</label>
+            <select id="board">
+                <option value="arduino:avr:uno">Arduino Uno</option>
+                <option value="arduino:avr:mega">Arduino Mega</option>
+            </select>
+            <button id="upload-button">Upload to Arduino</button>
+            <div id="blocklyDiv" style="height: 480px; width: 600px;"></div>
             <input type="file" id="extensionInput" style="display:none;" />
         </div>
         <div class="output-container">

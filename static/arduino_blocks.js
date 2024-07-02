@@ -1,9 +1,13 @@
 // static/arduino_blocks.js
 Blockly.Blocks['text_print'] = {
     init: function() {
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
         this.appendValueInput("TEXT")
             .setCheck(null)
             .appendField(new Blockly.FieldDropdown([["println", "PRINTLN"], ["print", "PRINT"]]), "MODE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
         this.setColour(160);
         this.setTooltip("Prints text to the serial monitor.");
         this.setHelpUrl("");
@@ -22,6 +26,240 @@ Blockly.Blocks['arduino_setup'] = {
         this.setHelpUrl("");
     }
 };
+
+Blockly.Blocks['serial_begin'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Serial.begin")
+            .appendField(new Blockly.FieldDropdown([
+                ["9600", "9600"], 
+                ["19200", "19200"], 
+                ["38400", "38400"], 
+                ["57600", "57600"], 
+                ["115200", "115200"]
+            ]), "BAUD_RATE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Initialize the serial communication with the specified baud rate.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['analog_read'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("analogRead")
+            .appendField(new Blockly.FieldDropdown([
+                ["A0", "A0"], ["A1", "A1"], ["A2", "A2"], ["A3", "A3"], ["A4", "A4"], ["A5", "A5"]
+            ]), "PIN");
+        this.setOutput(true, "Number");
+        this.setColour(160);
+        this.setTooltip("Read the value from the specified analog pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['digital_read'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("digitalRead")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN");
+        this.setOutput(true, "Boolean");
+        this.setColour(160);
+        this.setTooltip("Read the value from the specified digital pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['digital_write'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("digitalWrite")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldDropdown([
+                ["HIGH", "HIGH"], ["LOW", "LOW"]
+            ]), "STATE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Write the specified value to the specified digital pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['pin_mode'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("pinMode")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldDropdown([
+                ["INPUT", "INPUT"], ["OUTPUT", "OUTPUT"], ["INPUT_PULLUP", "INPUT_PULLUP"]
+            ]), "MODE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Set the mode of the specified pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['analog_write'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("analogWrite")
+            .appendField(new Blockly.FieldDropdown([
+                ["3", "3"], ["5", "5"], ["6", "6"], ["9", "9"], ["10", "10"], ["11", "11"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldNumber(0, 0, 255), "VALUE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Write an analog value (PWM) to the specified pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['analog_reference'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("analogReference")
+            .appendField(new Blockly.FieldDropdown([
+                ["DEFAULT", "DEFAULT"], ["INTERNAL", "INTERNAL"], ["INTERNAL1V1", "INTERNAL1V1"], ["INTERNAL2V56", "INTERNAL2V56"], ["EXTERNAL", "EXTERNAL"]
+            ]), "TYPE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Configures the reference voltage used for analog input.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['delay'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("delay")
+            .appendField(new Blockly.FieldNumber(0), "TIME");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Pauses the program for the amount of time (in milliseconds) specified as parameter.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['delay_microseconds'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("delayMicroseconds")
+            .appendField(new Blockly.FieldNumber(0), "TIME");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Pauses the program for the amount of time (in microseconds) specified as parameter.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['micros'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("micros");
+        this.setOutput(true, "Number");
+        this.setColour(160);
+        this.setTooltip("Returns the number of microseconds since the Arduino board began running the current program.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['millis'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("millis");
+        this.setOutput(true, "Number");
+        this.setColour(160);
+        this.setTooltip("Returns the number of milliseconds since the Arduino board began running the current program.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['no_tone'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("noTone")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Stops the generation of a square wave triggered by tone().");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['tone'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("tone")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldNumber(0, 0), "FREQUENCY")
+            .appendField("Hz")
+            .appendField("for")
+            .appendField(new Blockly.FieldNumber(0, 0), "DURATION")
+            .appendField("ms");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(160);
+        this.setTooltip("Generates a square wave of the specified frequency (and 50% duty cycle) on a pin. Optionally, a duration can be specified.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['pulse_in'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("pulseIn")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldDropdown([
+                ["HIGH", "HIGH"], ["LOW", "LOW"]
+            ]), "STATE");
+        this.setOutput(true, "Number");
+        this.setColour(160);
+        this.setTooltip("Reads a pulse (either HIGH or LOW) on a pin.");
+        this.setHelpUrl("");
+    }
+};
+
+Blockly.Blocks['pulse_in_long'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("pulseInLong")
+            .appendField(new Blockly.FieldDropdown([
+                ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"]
+            ]), "PIN")
+            .appendField(new Blockly.FieldDropdown([
+                ["HIGH", "HIGH"], ["LOW", "LOW"]
+            ]), "STATE");
+        this.setOutput(true, "Number");
+        this.setColour(160);
+        this.setTooltip("Reads a pulse (either HIGH or LOW) on a pin. For long pulse widths.");
+        this.setHelpUrl("");
+    }
+};
+
+
+//END ARDUINO
 
 Blockly.Blocks['arduino_loop'] = {
     init: function() {
@@ -75,11 +313,6 @@ Blockly.Blocks['math_number'] = {
     this.setHelpUrl("");
   }
 };
-
-// Função para gerar IDs aleatórias
-function generateRandomId() {
-    return Math.random().toString(36).substring(2, 15);
-}
 
 //Math
 //Declare
@@ -201,7 +434,7 @@ Blockly.Blocks['variables_get_number'] = {
         this.appendDummyInput()
             .appendField("Get number")
             .appendField(new Blockly.FieldVariable(
-                "myVarNumber",
+                "myVarText",
                 null,
                 ['NUMBER'],
                 'NUMBER'

@@ -1,3 +1,4 @@
+// static/arduino_generator.js
 Blockly.Arduino = new Blockly.Generator('Arduino');
 
 Blockly.Arduino.ORDER_ATOMIC = 0;         // 0 "" ...
@@ -91,14 +92,15 @@ Blockly.Arduino.blockToCode = function(block) {
     var code = func.call(this, block);
 
     if (Array.isArray(code)) {
-      return code;
+      return code[0] + this.scrub_(block, code[1]);
     } else {
-      return [code, Blockly.Arduino.ORDER_NONE];
+      return this.scrub_(block, code);
     }
   } else {
     return this.scrub_(block, '');
   }
 };
+
 
 Blockly.Arduino.workspaceToCode = function(workspace) {
   if (!workspace) {
@@ -126,11 +128,19 @@ Blockly.Arduino.prefixLines = function(text, prefix) {
     return prefix + text.replace(/\n/g, '\n' + prefix);
 };
 
+//Arduino
 Blockly.Arduino['arduino_setup'] = function(block) {
     var statements_setup = Blockly.Arduino.statementToCode(block, 'SETUP');
     statements_setup = Blockly.Arduino.addLoopTrap(statements_setup, block.id) || '';
     statements_setup = Blockly.Arduino.prefixLines(statements_setup, '  ');  // Add indentation
     var code = 'void setup() {\n' + statements_setup + '}\n';
+    
+    // Adiciona o código dos blocos conectados
+    var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+    if (nextBlock) {
+        code += Blockly.Arduino.blockToCode(nextBlock);
+    }
+
     return code;
 };
 
@@ -139,8 +149,112 @@ Blockly.Arduino['arduino_loop'] = function(block) {
     statements_loop = Blockly.Arduino.addLoopTrap(statements_loop, block.id) || '';
     statements_loop = Blockly.Arduino.prefixLines(statements_loop, '  ');  // Add indentation
     var code = 'void loop() {\n' + statements_loop + '}\n';
+    
+    // Adiciona o código dos blocos conectados
+    var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+    if (nextBlock) {
+        code += Blockly.Arduino.blockToCode(nextBlock);
+    }
+
     return code;
 };
+
+Blockly.Arduino['serial_begin'] = function(block) {
+    var baudRate = block.getFieldValue('BAUD_RATE');
+    var code = 'Serial.begin(' + baudRate + ');\n';
+    return code;
+};
+
+Blockly.Arduino['analog_read'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var code = 'analogRead(' + pin + ');\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+Blockly.Arduino['digital_read'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var code = 'digitalRead(' + pin + ');\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+Blockly.Arduino['digital_write'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var state = block.getFieldValue('STATE');
+    var code = 'digitalWrite(' + pin + ', ' + state + ');\n';
+    return code;
+};
+
+Blockly.Arduino['pin_mode'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var mode = block.getFieldValue('MODE');
+    var code = 'pinMode(' + pin + ', ' + mode + ');\n';
+    return code;
+};
+
+Blockly.Arduino['analog_write'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var value = block.getFieldValue('VALUE');
+    var code = 'analogWrite(' + pin + ', ' + value + ');\n';
+    return code;
+};
+
+Blockly.Arduino['analog_reference'] = function(block) {
+    var type = block.getFieldValue('TYPE');
+    var code = 'analogReference(' + type + ');\n';
+    return code;
+};
+
+Blockly.Arduino['delay'] = function(block) {
+    var time = block.getFieldValue('TIME');
+    var code = 'delay(' + time + ');\n';
+    return code;
+};
+
+Blockly.Arduino['delay_microseconds'] = function(block) {
+    var time = block.getFieldValue('TIME');
+    var code = 'delayMicroseconds(' + time + ');\n';
+    return code;
+};
+
+Blockly.Arduino['micros'] = function(block) {
+    var code = 'micros();\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+Blockly.Arduino['millis'] = function(block) {
+    var code = 'millis();\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+Blockly.Arduino['no_tone'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var code = 'noTone(' + pin + ');\n';
+    return code;
+};
+
+Blockly.Arduino['tone'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var frequency = block.getFieldValue('FREQUENCY');
+    var duration = block.getFieldValue('DURATION');
+    var code = 'tone(' + pin + ', ' + frequency + ', ' + duration + ');\n';
+    return code;
+};
+
+Blockly.Arduino['pulse_in'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var state = block.getFieldValue('STATE');
+    var code = 'pulseIn(' + pin + ', ' + state + ');\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+Blockly.Arduino['pulse_in_long'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var state = block.getFieldValue('STATE');
+    var code = 'pulseInLong(' + pin + ', ' + state + ');\n';
+    return [code, Blockly.Arduino.ORDER_ATOMIC];
+};
+
+//END ARDUINO
 
 
 
@@ -483,7 +597,7 @@ Blockly.Arduino.quote_ = function(string) {
 };
 
 Blockly.Arduino['text'] = function (block) {
-    var code = Blockly.Arduino.quote_(block.getFieldValue('TEXT'));
+    const code = Blockly.Arduino.quote_(block.getFieldValue('TEXT'));
     return [code, Blockly.Arduino.ORDER_ATOMIC];
 };
 
@@ -816,8 +930,6 @@ Blockly.Arduino['variables_declare_number'] = function(block) {
     var type = block.getFieldValue('TYPE');
     var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '0';
 
-    console.log('value: ', value)
-
     if (typeof value[0] === 'string') {
         value = value[0].replace(/[()]/g, '');
     }
@@ -832,8 +944,8 @@ Blockly.Arduino['variables_declare_text'] = function(block) {
     var type = block.getFieldValue('TYPE');
     var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '""';
 
-    if (typeof value === 'string') {
-        value = value.replace(/[()]/g, '');
+    if (typeof value[0] === 'string') {
+        value = value[0].replace(/[()]/g, '');
     }
 
     if (type === 'char') {
@@ -933,6 +1045,29 @@ Blockly.Arduino['procedures_ifreturn'] = function(block) {
   return code;
 };
 
+Blockly.Generator.prototype.blockToCode = function(block) {
+  if (!block) {
+    return '';
+  }
+
+  if (block.isEnabled() && !block.hasDisabledReason()) {
+    var func = this[block.type];
+    if (typeof func !== 'function') {
+      throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
+    }
+    var code = func.call(this, block);
+
+    // Se code não for um array, transforma em uma tupla
+    if (!Array.isArray(code)) {
+      code = [code, Blockly.Arduino.ORDER_ATOMIC];
+    }
+
+    return code;
+  } else {
+    return this.scrub_(block, '');
+  }
+};
+
 Blockly.Generator.prototype.valueToCode = function(block, name, outerOrder) {
   if (isNaN(outerOrder)) {
     throw Error('Expecting valid order from block: ' + block);
@@ -941,9 +1076,10 @@ Blockly.Generator.prototype.valueToCode = function(block, name, outerOrder) {
   if (!targetBlock) {
     return ['', Blockly.Generator.ORDER_ATOMIC];
   }
+
   var tuple = this.blockToCode(targetBlock);
   if (!Array.isArray(tuple)) {
-    throw TypeError('Expecting tuple from value block: ' + targetBlock.type);
+    tuple = [tuple, Blockly.Arduino.ORDER_ATOMIC];
   }
   var code = tuple[0];
   var innerOrder = tuple[1];
@@ -957,13 +1093,14 @@ Blockly.Generator.prototype.valueToCode = function(block, name, outerOrder) {
 };
 
 Blockly.Generator.prototype.statementToCode = function(block, name) {
-    var targetBlock = block.getInputTargetBlock(name);
-    if (!targetBlock) {
-        return ''; // If there's no block, return empty string
-    }
-    var code = this.blockToCode(targetBlock);
-    if (!Array.isArray(code)) {
-        throw new Error('Expecting code from statement block: ' + (targetBlock && targetBlock.type));
-    }
-    return code[0];
+  var targetBlock = block.getInputTargetBlock(name);
+  if (!targetBlock) {
+    return ''; // Se não há bloco conectado, retorna string vazia
+  }
+  var code = this.blockToCode(targetBlock);
+  if (Array.isArray(code)) {
+    code = code[0]; // Usa o primeiro elemento do array se for um array
+  }
+
+  return code;
 };

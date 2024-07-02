@@ -1,7 +1,7 @@
 {
-  "name": "mitappinventorcodeblocks",
+  "name": "ArduinoBlockly",
   "version": "1.0.0",
-  "description": "MIT App Inventor Codeblocks",
+  "description": "Projeto para listar portas seriais e compilar código Arduino usando Blockly",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
@@ -9,8 +9,12 @@
   "dependencies": {
     "@blockly/theme-dark": "^7.0.1",
     "@blockly/workspace-backpack": "^6.0.2",
+    "body-parser": "^1.20.2",
+    "child_process": "^1.0.2",
+    "express": "^4.19.2",
     "jsdom": "^21.1.2",
-    "module-alias": "^2.2.3"
+    "module-alias": "^2.2.3",
+    "serialport": "^9.2.8"
   },
   "author": "Francisco Iago Lira Passos",
   "license": "MIT"
