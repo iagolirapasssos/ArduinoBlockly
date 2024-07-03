@@ -14,7 +14,8 @@
     "express": "^4.19.2",
     "jsdom": "^21.1.2",
     "module-alias": "^2.2.3",
-    "serialport": "^9.2.8"
+    "serialport": "^9.2.8",
+    "uuid": "^10.0.0"
   },
   "author": "Francisco Iago Lira Passos",
   "license": "MIT"

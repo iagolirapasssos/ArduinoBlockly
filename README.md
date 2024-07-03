@@ -37,12 +37,12 @@ Here's a brief overview of the project structure:
 ArduinoBlockly:
 ├── app.js                   # Main server file
 ├── Blocks Examples
-│   └── HelloWorld.xml       # Example Blockly XML file
+│   └── HelloWorld.xml       # Example Blockly XML file
 ├── ExternalExtensions
-│   └── cryptograph_extension.js  # Example extension
+│   └── cryptograph_extension.js  # Example extension
 ├── Figures
-│   ├── IDE01.png            # Screenshot of the IDE
-│   └── IDE02.png            # Screenshot of the IDE
+│   ├── IDE01.png            # Screenshot of the IDE
+│   └── IDE02.png            # Screenshot of the IDE
 ├── index.html               # Main HTML file
 ├── LICENSE
 ├── output.txt               # Example output file
@@ -50,16 +50,16 @@ ArduinoBlockly:
 ├── package-lock.json        # npm lock file
 ├── README.md
 ├── sketches
-│   ├── sketches.ino         # Example Arduino sketch
-│   └── temporary_sketch
-│       └── temporary_sketch.ino  # Temporary Arduino sketch
+│   ├── sketches.ino         # Example Arduino sketch
+│   └── temporary_sketch
+│       └── temporary_sketch.ino  # Temporary Arduino sketch
 ├── static                   # Static files directory
-│   ├── arduino_blocks.js    # Custom Blockly blocks
-│   ├── arduino_generator.js # Arduino code generator
-│   ├── custom_generators.js # Custom code generators
-│   ├── favicon.ico          # Favicon
-│   ├── script.js            # Custom scripts
-│   └── style.css            # Custom styles
+│   ├── arduino_blocks.js    # Custom Blockly blocks
+│   ├── arduino_generator.js # Arduino code generator
+│   ├── custom_generators.js # Custom code generators
+│   ├── favicon.ico          # Favicon
+│   ├── script.js            # Custom scripts
+│   └── style.css            # Custom styles
 ```
 
 ## Step 3: Running the Application
@@ -140,3 +140,183 @@ To include external extensions, place your JavaScript files in the `ExternalExte
 Congratulations! You have successfully set up and started using the Arduino Blockly IDE with Node.js. This environment allows you to create Arduino projects visually using Blockly, making it easier for beginners and experienced developers alike.
 
 For more information and advanced customization, refer to the official Blockly and Arduino documentation. Happy coding!
+
+---
+
+## Creating a Private Network Using Your Notebook's IP Address
+
+To create a private network accessible only by devices connected to your Wi-Fi and run your Node.js application on this network, follow these steps:
+
+### 1. Connect All Devices to the Same Wi-Fi Network
+
+Ensure all devices (your notebook and other devices) are connected to the same Wi-Fi network.
+
+### 2. Find Your Notebook's IP Address
+
+- On Windows, open Command Prompt and type:
+  ```cmd
+  ipconfig
+  ```
+  Look for the IPv4 address of the Wi-Fi interface.
+
+- On macOS or Linux, open Terminal and type:
+  ```bash
+  ifconfig
+  ```
+  Look for the IPv4 address of the Wi-Fi interface (usually something like `192.168.x.x`).
+
+### 3. Configure Your Node.js Application to Listen on All Network Interfaces
+
+Ensure your Node.js application is configured to listen on all network interfaces. Modify the `app.js` file to use the address `0.0.0.0`:
+
+```javascript
+const express = require('express');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const { exec, spawn } = require('child_process');
+const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid'); // Add this line to use UUIDs
+
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+app.use('/static', express.static('static'));
+
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+app.get('/ports', (req, res) => {
+    exec('arduino-cli board list', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            return res.status(500).json({ error: error.message });
+        }
+        if (stderr) {
+            console.error(`Stderr: ${stderr}`);
+            return res.status(500).json({ error: stderr });
+        }
+
+        const ports = stdout.split('\n')
+            .filter(line => line.includes('/dev/tty'))
+            .map(line => {
+                const [port, , board, , , name] = line.split(/\s+/);
+                return { path: port, board: name || 'Unknown Board' };
+            });
+
+        res.json(ports);
+    });
+});
+
+function sanitizeFilename(name) {
+    return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+}
+
+async function deleteDirectoryRecursive(directoryPath) {
+    try {
+        const files = await fs.readdir(directoryPath);
+        await Promise.all(files.map(async (file) => {
+            const curPath = path.join(directoryPath, file);
+            const stat = await fs.lstat(curPath);
+            if (stat.isDirectory()) {
+                await deleteDirectoryRecursive(curPath);
+            } else {
+                await fs.unlink(curPath);
+            }
+        }));
+        await fs.rmdir(directoryPath);
+    } catch (err) {
+        console.error(`Error deleting directory ${directoryPath}:`, err);
+    }
+}
+
+app.post('/upload', async (req, res) => {
+    const { port, board, code } = req.body;
+
+    // Generate a unique sketch name using UUID
+    const sketchName = sanitizeFilename(`temporary_sketch_${uuidv4()}`);
+    const sketchDir = path.join(__dirname, 'sketches', sketchName);
+    const sketchPath = path.join(sketchDir, `${sketchName}.ino`);
+
+    try {
+        // Create the sketches directory and the temporary directory if they don't exist
+        await fs.mkdir(sketchDir, { recursive: true });
+
+        // Create the temporary sketch file
+        await fs.writeFile(sketchPath, code);
+
+        // Verify the file was created correctly
+        try {
+            await fs.access(sketchPath);
+        } catch (err) {
+            return res.status(500).json({ error: 'Failed to create sketch file' });
+        }
+
+        // Command to compile and upload the code to the Arduino
+        const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
+        exec(command, { cwd: sketchDir }, async (error, stdout, stderr) => {
+            // Delete the temporary directory and files
+            await deleteDirectoryRecursive(sketchDir);
+
+            if (error) {
+                console.error(`Error: ${error.message}`);
+                return res.status(500).json({ error: error.message });
+            }
+            if (stderr) {
+                console.error(`Stderr: ${stderr}`);
+                return res.status(500).json({ error: stderr });
+            }
+            console.log(`Std
+
+out: ${stdout}`);
+            res.json({ message: 'Upload successful', output: stdout });
+        });
+    } catch (err) {
+        console.error(`Error: ${err.message}`);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/serial', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const port = new SerialPort(req.query.port, { baudRate: 9600 });
+    const parser = port.pipe(new Readline({ delimiter: '\r\n' }));
+
+    parser.on('data', data => {
+        res.write(`data: ${data}\n\n`);
+    });
+
+    port.on('error', err => {
+        console.error('Error: ', err.message);
+        res.write(`event: error\ndata: ${err.message}\n\n`);
+        res.end();
+    });
+
+    req.on('close', () => {
+        port.close();
+        res.end();
+    });
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
+```
+
+### 4. Start the Node.js Server
+
+```bash
+node app.js
+```
+
+### 5. Access the Server from Other Devices
+
+- In your web browser, access `http://<YOUR_NOTEBOOK_IP>:3000`, where `<YOUR_NOTEBOOK_IP>` is the IP address you found in step 2.
+
+This should allow all devices connected to the same Wi-Fi network to access your Node.js server using your notebook's IP address. Ensure your firewall settings allow traffic on port 3000.

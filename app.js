@@ -1,10 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const { exec, spawn } = require('child_process');
+const fs = require('fs').promises; // Usando promises para operações de E/S
+const { exec } = require('child_process');
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = 3000;
@@ -42,58 +43,67 @@ function sanitizeFilename(name) {
     return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 }
 
-function deleteDirectoryRecursive(directoryPath) {
-    if (fs.existsSync(directoryPath)) {
-        fs.readdirSync(directoryPath).forEach((file) => {
+async function deleteDirectoryRecursive(directoryPath) {
+    try {
+        const files = await fs.readdir(directoryPath);
+        await Promise.all(files.map(async (file) => {
             const curPath = path.join(directoryPath, file);
-            if (fs.lstatSync(curPath).isDirectory()) {
-                deleteDirectoryRecursive(curPath);
+            const stat = await fs.lstat(curPath);
+            if (stat.isDirectory()) {
+                await deleteDirectoryRecursive(curPath);
             } else {
-                fs.unlinkSync(curPath);
+                await fs.unlink(curPath);
             }
-        });
-        fs.rmdirSync(directoryPath);
+        }));
+        await fs.rmdir(directoryPath);
+    } catch (err) {
+        console.error(`Error deleting directory ${directoryPath}:`, err);
     }
 }
 
-app.post('/upload', (req, res) => {
+app.post('/upload', async (req, res) => {
     const { port, board, code } = req.body;
 
-    // Sanitize the sketch name to remove special characters
-    const sketchName = sanitizeFilename(`temporary_sketch_${Date.now()}`);
+    // Generate a unique sketch name using UUID
+    const sketchName = sanitizeFilename(`temporary_sketch_${uuidv4()}`);
     const sketchDir = path.join(__dirname, 'sketches', sketchName);
     const sketchPath = path.join(sketchDir, `${sketchName}.ino`);
 
-    // Create the sketches directory and the temporary directory if they don't exist
-    if (!fs.existsSync(sketchDir)) {
-        fs.mkdirSync(sketchDir, { recursive: true });
-    }
+    try {
+        // Create the sketches directory and the temporary directory if they don't exist
+        await fs.mkdir(sketchDir, { recursive: true });
 
-    // Create the temporary sketch file
-    fs.writeFileSync(sketchPath, code);
+        // Create the temporary sketch file
+        await fs.writeFile(sketchPath, code);
 
-    // Verify the file was created correctly
-    if (!fs.existsSync(sketchPath)) {
-        return res.status(500).json({ error: 'Failed to create sketch file' });
-    }
-
-    // Command to compile and upload the code to the Arduino
-    const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
-    exec(command, { cwd: sketchDir }, (error, stdout, stderr) => {
-        // Delete the temporary directory and files
-        deleteDirectoryRecursive(sketchDir);
-
-        if (error) {
-            console.error(`Error: ${error.message}`);
-            return res.status(500).json({ error: error.message });
+        // Verify the file was created correctly
+        try {
+            await fs.access(sketchPath);
+        } catch (err) {
+            return res.status(500).json({ error: 'Failed to create sketch file' });
         }
-        if (stderr) {
-            console.error(`Stderr: ${stderr}`);
-            return res.status(500).json({ error: stderr });
-        }
-        console.log(`Stdout: ${stdout}`);
-        res.json({ message: 'Upload successful', output: stdout });
-    });
+
+        // Command to compile and upload the code to the Arduino
+        const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
+        exec(command, { cwd: sketchDir }, async (error, stdout, stderr) => {
+            // Delete the temporary directory and files
+            await deleteDirectoryRecursive(sketchDir);
+
+            if (error) {
+                console.error(`Error: ${error.message}`);
+                return res.status(500).json({ error: error.message });
+            }
+            if (stderr) {
+                console.error(`Stderr: ${stderr}`);
+                return res.status(500).json({ error: stderr });
+            }
+            console.log(`Stdout: ${stdout}`);
+            res.json({ message: 'Upload successful', output: stdout });
+        });
+    } catch (err) {
+        console.error(`Error: ${err.message}`);
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/serial', (req, res) => {
