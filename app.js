@@ -5,8 +5,6 @@ const { exec, spawn } = require('child_process');
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 const path = require('path');
-const sanitize = require('sanitize-filename');
-const rimraf = require('rimraf');
 
 const app = express();
 const port = 3000;
@@ -40,11 +38,29 @@ app.get('/ports', (req, res) => {
     });
 });
 
+function sanitizeFilename(name) {
+    return name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+}
+
+function deleteDirectoryRecursive(directoryPath) {
+    if (fs.existsSync(directoryPath)) {
+        fs.readdirSync(directoryPath).forEach((file) => {
+            const curPath = path.join(directoryPath, file);
+            if (fs.lstatSync(curPath).isDirectory()) {
+                deleteDirectoryRecursive(curPath);
+            } else {
+                fs.unlinkSync(curPath);
+            }
+        });
+        fs.rmdirSync(directoryPath);
+    }
+}
+
 app.post('/upload', (req, res) => {
     const { port, board, code } = req.body;
 
     // Sanitize the sketch name to remove special characters
-    const sketchName = sanitize(`temporary_sketch_${Date.now()}`);
+    const sketchName = sanitizeFilename(`temporary_sketch_${Date.now()}`);
     const sketchDir = path.join(__dirname, 'sketches', sketchName);
     const sketchPath = path.join(sketchDir, `${sketchName}.ino`);
 
@@ -65,11 +81,7 @@ app.post('/upload', (req, res) => {
     const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
     exec(command, { cwd: sketchDir }, (error, stdout, stderr) => {
         // Delete the temporary directory and files
-        rimraf(sketchDir, (rimrafError) => {
-            if (rimrafError) {
-                console.error(`Error deleting temporary files: ${rimrafError.message}`);
-            }
-        });
+        deleteDirectoryRecursive(sketchDir);
 
         if (error) {
             console.error(`Error: ${error.message}`);

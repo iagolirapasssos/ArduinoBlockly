@@ -738,7 +738,6 @@ Blockly.Arduino['text_print'] = function(block) {
     }
 
     // Remover os parênteses externos e as aspas
-    console.log("argument0: ", argument0);
     argument0 = cleanAndStoreText(argument0, 1, -1);
 
     if (mode === 'PRINTLN') {
