@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,16 +41,16 @@
         <div class="editor-container">
             <!--<h2>Codeblocks</h2>-->
             <label for="serial-port">Select Serial Port:</label>
-                <select id="serial-port">
-                    <option value="">Select a port</option>
-                </select>
-                <label for="board">Select Board:</label>
-                <select id="board">
-                    <option value="arduino:avr:uno">Arduino Uno</option>
-                    <option value="arduino:avr:mega">Arduino Mega</option>
-                </select>
-                <button id="upload-button">Upload to Arduino</button>
-                <p>
+            <select id="serial-port">
+                <option value="">Select a port</option>
+            </select>
+            <label for="board">Select Board:</label>
+            <select id="board">
+                <option value="arduino:avr:uno">Arduino Uno</option>
+                <option value="arduino:avr:mega">Arduino Mega</option>
+            </select>
+            <button id="upload-button">Upload to Arduino</button>
+            <p>
             <div id="blocklyDiv" class="blockly-area"></div>
             <xml id="toolbox" style="display: none">
                 <category name="Logic" colour="%{BKY_LOGIC_HUE}">
@@ -230,13 +229,7 @@
                     <block type="variables_get_text"></block>
                     <block type="variables_get_boolean"></block>
                 </category>
-                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}">
-                  <block type="procedures_defnoreturn"></block>
-                  <block type="procedures_defreturn"></block>
-                  <block type="procedures_callnoreturn"></block>
-                  <block type="procedures_callreturn"></block>
-                  <block type="procedures_ifreturn"></block>
-                </category>
+                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
 
                 <category name="Arduino" colour="230">
                     <block type="arduino_setup"></block>
@@ -264,8 +257,7 @@
                 </category>
             </xml>
             <h1>Monitor Serial</h1>
-            <div <div class="blocklyDiv">
-                
+            <div class="blocklyDiv">
                 <div id="blocklyWorkspace">
                     <div id="serialMonitor" class="serial-monitor"></div>
                 </div>

@@ -112,10 +112,10 @@ Blockly.Arduino['call_caesar_encrypt'] = function(block) {
     if (Array.isArray(shift)) {
       shift = shift[0];
     }
-    
+
     //Check if the characters '(' and ')' are present. If they are, we will convert the string to a list and then get the first index.
 
-    text = cleanAndStoreText(text, 2, -2);
+    text = cleanAndStoreText(text, 1, -1);
     shift = cleanAndStoreText(shift, 1, -1);
 
     var code = 'caesarEncrypt(' + text + ', ' + shift + ')';
@@ -125,8 +125,7 @@ Blockly.Arduino['call_caesar_encrypt'] = function(block) {
 Blockly.Arduino['call_caesar_decrypt'] = function(block) {
     var text = Blockly.Arduino.valueToCode(block, 'TEXT', Blockly.Arduino.ORDER_ATOMIC);
     var shift = Blockly.Arduino.valueToCode(block, 'SHIFT', Blockly.Arduino.ORDER_ATOMIC);
-    
-    console.log("shift: ", shift );
+  
     if (Array.isArray(text)) {
       text = text[0];
     }
@@ -135,7 +134,7 @@ Blockly.Arduino['call_caesar_decrypt'] = function(block) {
     }
 
     //Check if the characters '(' and ')' are present. If they are, we will convert the string to a list and then get the first index.
-    text = cleanAndStoreText(text, 2, -2);
+    text = cleanAndStoreText(text, 1, -1);
     shift = cleanAndStoreText(shift, 1, -1);   
 
     var code = 'caesarDecrypt(' + text + ', ' + shift + ')';
@@ -143,7 +142,11 @@ Blockly.Arduino['call_caesar_decrypt'] = function(block) {
 };
 
 function cleanAndStoreText(text, startIndex, endIndex) {
-    let cleanedString = text.slice(startIndex, endIndex);
-    let resultList = [cleanedString];
-    return resultList[0];
+    if (text.startsWith('(') && text.endsWith(')')) {
+        let cleanedString = text.slice(startIndex, endIndex);
+        let resultList = [cleanedString];
+        return resultList[0];
+    } else {
+        return text;
+    }
 }

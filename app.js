@@ -5,6 +5,8 @@ const { exec, spawn } = require('child_process');
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 const path = require('path');
+const sanitize = require('sanitize-filename');
+const rimraf = require('rimraf');
 
 const app = express();
 const port = 3000;
@@ -17,37 +19,58 @@ app.get('/', (req, res) => {
 });
 
 app.get('/ports', (req, res) => {
-    SerialPort.list().then(ports => {
+    exec('arduino-cli board list', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            return res.status(500).json({ error: error.message });
+        }
+        if (stderr) {
+            console.error(`Stderr: ${stderr}`);
+            return res.status(500).json({ error: stderr });
+        }
+
+        const ports = stdout.split('\n')
+            .filter(line => line.includes('/dev/tty'))
+            .map(line => {
+                const [port, , board, , , name] = line.split(/\s+/);
+                return { path: port, board: name || 'Unknown Board' };
+            });
+
         res.json(ports);
-    }).catch(err => {
-        res.status(500).json({ error: err.message });
     });
 });
 
 app.post('/upload', (req, res) => {
     const { port, board, code } = req.body;
 
-    // Nome do diretório e arquivo temporário
-    const sketchName = 'temporary_sketch';
+    // Sanitize the sketch name to remove special characters
+    const sketchName = sanitize(`temporary_sketch_${Date.now()}`);
     const sketchDir = path.join(__dirname, 'sketches', sketchName);
     const sketchPath = path.join(sketchDir, `${sketchName}.ino`);
 
-    // Cria o diretório sketches e o diretório temporário se não existirem
+    // Create the sketches directory and the temporary directory if they don't exist
     if (!fs.existsSync(sketchDir)) {
         fs.mkdirSync(sketchDir, { recursive: true });
     }
 
-    // Cria o arquivo de sketch temporário
+    // Create the temporary sketch file
     fs.writeFileSync(sketchPath, code);
 
-    // Verifique se o arquivo foi criado corretamente
+    // Verify the file was created correctly
     if (!fs.existsSync(sketchPath)) {
         return res.status(500).json({ error: 'Failed to create sketch file' });
     }
 
-    // Comando para compilar e fazer upload do código para o Arduino
+    // Command to compile and upload the code to the Arduino
     const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
     exec(command, { cwd: sketchDir }, (error, stdout, stderr) => {
+        // Delete the temporary directory and files
+        rimraf(sketchDir, (rimrafError) => {
+            if (rimrafError) {
+                console.error(`Error deleting temporary files: ${rimrafError.message}`);
+            }
+        });
+
         if (error) {
             console.error(`Error: ${error.message}`);
             return res.status(500).json({ error: error.message });

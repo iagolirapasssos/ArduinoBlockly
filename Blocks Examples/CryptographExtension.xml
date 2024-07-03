@@ -8,7 +8,7 @@
         <next>
           <block type="variables_declare_text" id="I)q[bBcjuDXimA{=U%by">
             <field name="VAR_NAME">encrypted</field>
-            <field name="TYPE">char</field>
+            <field name="TYPE">String</field>
             <value name="VALUE">
               <block type="call_caesar_encrypt" id="P?uUTMq`!*x0D:/s/6$M">
                 <value name="TEXT">
@@ -30,22 +30,27 @@
   </block>
   <block type="arduino_setup" id="8P1ZXStVRXgM;Y{tK6z}" x="50" y="210">
     <statement name="SETUP">
-      <block type="text_print" id="ZK?w@dV+5N[dw7iLKBq;">
-        <field name="MODE">PRINTLN</field>
-        <value name="TEXT">
-          <block type="call_caesar_decrypt" id="O88|lj@+Ilh~dR+sV}[t">
+      <block type="serial_begin" id="88l;3[xCROMw{)u9gspF">
+        <field name="BAUD_RATE">9600</field>
+        <next>
+          <block type="text_print" id="ZK?w@dV+5N[dw7iLKBq;">
+            <field name="MODE">PRINTLN</field>
             <value name="TEXT">
-              <block type="variables_get_text" id="V^L}04^39?b73;M^K}j/">
-                <field name="VAR" id="4si..l]w7PNBtKeD6cyR" variabletype="TEXT">encrypted</field>
-              </block>
-            </value>
-            <value name="SHIFT">
-              <block type="math_number" id="4u2Uvz;jN-{V.Be3kQ,w">
-                <field name="NUM">7</field>
+              <block type="call_caesar_decrypt" id="O88|lj@+Ilh~dR+sV}[t">
+                <value name="TEXT">
+                  <block type="variables_get_text" id="V^L}04^39?b73;M^K}j/">
+                    <field name="VAR" id="4si..l]w7PNBtKeD6cyR" variabletype="TEXT">encrypted</field>
+                  </block>
+                </value>
+                <value name="SHIFT">
+                  <block type="math_number" id="4u2Uvz;jN-{V.Be3kQ,w">
+                    <field name="NUM">7</field>
+                  </block>
+                </value>
               </block>
             </value>
           </block>
-        </value>
+        </next>
       </block>
     </statement>
   </block>

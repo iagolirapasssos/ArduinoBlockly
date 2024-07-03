@@ -732,13 +732,13 @@ Blockly.Arduino['text_print'] = function(block) {
     var mode = block.getFieldValue('MODE');
     var argument0 = Blockly.Arduino.valueToCode(block, 'TEXT', Blockly.Arduino.ORDER_NONE) || '""';
 
-    console.log("argument0: ", argument0)
     // Verificar se o value é um array e pegar o primeiro elemento
     if (Array.isArray(argument0)) {
         argument0 = argument0[0];
     }
 
     // Remover os parênteses externos e as aspas
+    console.log("argument0: ", argument0);
     argument0 = cleanAndStoreText(argument0, 1, -1);
 
     if (mode === 'PRINTLN') {
@@ -942,22 +942,13 @@ Blockly.Arduino['variables_declare_text'] = function(block) {
     var varName = block.getFieldValue('VAR_NAME');
     var type = block.getFieldValue('TYPE');
     var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '""';
-    console.log("value text: ", value)
 
     if (Array.isArray(value)) {
       value = value[0]
     }
 
     // Remover os parênteses externos e as aspas
-    let cleanedString = value.slice(2, -2);
-
-    // Transformar em uma lista
-    let resultList = [cleanedString];
-
-    console.log(resultList); // ["Serial.println(\"Olá mundo!\")"]
-    console.log(resultList[0]); // Serial.println("Olá mundo!")
-
-    value = resultList[0];
+    value = cleanAndStoreText(value, 1, -1);
 
     if (type === 'char') {
         var arraySize = 15;
@@ -1136,7 +1127,11 @@ Blockly.Arduino.blockToCode = function(block) {
 };
 
 function cleanAndStoreText(text, startIndex, endIndex) {
-    let cleanedString = text.slice(startIndex, endIndex);
-    let resultList = [cleanedString];
-    return resultList[0];
+    if (text.startsWith('(') && text.endsWith(')')) {
+        let cleanedString = text.slice(startIndex, endIndex);
+        let resultList = [cleanedString];
+        return resultList[0];
+    } else {
+        return text;
+    }
 }

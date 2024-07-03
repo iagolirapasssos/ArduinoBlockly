@@ -24,7 +24,40 @@ function startSerialMonitor(selectedPort) {
     });
 }
 
+function updatePortList() {
+    fetch('/ports')
+        .then(response => response.json())
+        .then(data => {
+            const selectPort = document.getElementById('serial-port');
+            if (!selectPort) {
+                console.error('Dropdown element not found');
+                return;
+            }
+            const selectedValue = selectPort.value; // Save the selected value
+            selectPort.innerHTML = '<option value="">Select a port</option>'; // Clear existing options
+            data.forEach(port => {
+                const option = document.createElement('option');
+                option.value = port.path;
+                option.text = `${port.path} (${port.board})`;
+                selectPort.appendChild(option);
+            });
+            selectPort.value = selectedValue; // Restore the selected value
+        })
+        .catch(error => {
+            console.error('Error fetching ports:', error);
+        });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    const selectPort = document.getElementById('serial-port');
+    selectPort.addEventListener('click', function () {
+        const previousValue = selectPort.value;
+        updatePortList();
+        setTimeout(() => {
+            selectPort.value = previousValue;
+        }, 100);
+    });
+
     fetch('/ports')
         .then(response => response.json())
         .then(data => {
