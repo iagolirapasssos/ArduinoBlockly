@@ -17,7 +17,7 @@ Before we begin, ensure you have the following installed on your system:
 First, clone the Arduino Blockly IDE repository to your local machine:
 
 ```sh
-git clone https://github.com/yourusername/ArduinoBlockly.git
+git clone https://github.com/iagolirapasssos/ArduinoBlockly.git
 cd ArduinoBlockly
 ```
 
@@ -69,7 +69,7 @@ ArduinoBlockly:
 To run the application, execute the following command in the project directory:
 
 ```sh
-node app.js
+npm start
 ```
 
 By default, the server will start on port 3000. Open your web browser and navigate to `http://localhost:3000` to access the Arduino Blockly IDE.

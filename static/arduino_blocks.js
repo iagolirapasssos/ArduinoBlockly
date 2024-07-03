@@ -460,8 +460,9 @@ Blockly.Blocks['variables_get_text'] = {
         this.setOutput(true, "String");
         this.setColour(230);
         this.setTooltip("Get the value of a text variable");
+        this.arguments_ = [];
         this.setHelpUrl("");
-    }
+    },
 };
 
 // Get Boolean Variable
@@ -482,3 +483,126 @@ Blockly.Blocks['variables_get_boolean'] = {
     }
 };
 //END MATH
+
+//Functions blocks
+// Bloco para definir uma função com retorno
+Blockly.Blocks['procedures_defreturn'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("function")
+        .appendField(new Blockly.FieldTextInput("do something"), "NAME");
+    this.appendStatementInput("STACK")
+        .setCheck(null)
+        .appendField("do");
+    this.appendValueInput("RETURN")
+        .setCheck(null)
+        .appendField("return");
+    this.setInputsInline(false);
+    this.setColour(290);
+    this.setTooltip("");
+    this.setHelpUrl("");
+    this.arguments_ = [];
+    this.setStyle('procedure_blocks');
+  },
+  getVars: function() {
+    return this.arguments_;
+  },
+  getVarModels: function() {
+    return this.arguments_.map(varName => this.workspace.getVariable(varName));
+  }
+};
+
+// Bloco para definir uma função sem retorno
+Blockly.Blocks['procedures_defnoreturn'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("function")
+        .appendField(new Blockly.FieldTextInput("do something"), "NAME");
+    this.appendStatementInput("STACK")
+        .setCheck(null)
+        .appendField("do");
+    this.setInputsInline(false);
+    this.setColour(290);
+    this.setTooltip("");
+    this.setHelpUrl("");
+    this.arguments_ = [];
+    this.setStyle('procedure_blocks');
+  },
+  getVars: function() {
+    return this.arguments_;
+  },
+  getVarModels: function() {
+    return this.arguments_.map(varName => this.workspace.getVariable(varName));
+  }
+};
+
+// Bloco para chamar uma função com retorno
+Blockly.Blocks['procedures_callreturn'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("call")
+        .appendField(new Blockly.FieldTextInput("do something"), "NAME");
+    this.setOutput(true, null);
+    this.setColour(290);
+    this.setTooltip("");
+    this.setHelpUrl("");
+    this.arguments_ = [];
+    this.setStyle('procedure_blocks');
+  },
+  getVars: function() {
+    return this.arguments_;
+  },
+  getVarModels: function() {
+    return this.arguments_.map(varName => this.workspace.getVariable(varName));
+  }
+};
+
+// Bloco para chamar uma função sem retorno
+Blockly.Blocks['procedures_callnoreturn'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("call")
+        .appendField(new Blockly.FieldTextInput("do something"), "NAME");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(290);
+    this.setTooltip("");
+    this.setHelpUrl("");
+    this.arguments_ = [];
+    this.setStyle('procedure_blocks');
+  },
+  getVars: function() {
+    return this.arguments_;
+  },
+  getVarModels: function() {
+    return this.arguments_.map(varName => this.workspace.getVariable(varName));
+  }
+};
+
+// Bloco para retornar condicionalmente
+Blockly.Blocks['procedures_ifreturn'] = {
+  init: function() {
+    this.appendValueInput("CONDITION")
+        .setCheck("Boolean")
+        .appendField("if");
+    this.appendDummyInput()
+        .appendField("return");
+    this.appendValueInput("VALUE")
+        .setCheck(null);
+    this.setInputsInline(true);
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(290);
+    this.setTooltip("");
+    this.setHelpUrl("");
+    this.arguments_ = [];
+    this.setStyle('procedure_blocks');
+  },
+  getVars: function() {
+    return this.arguments_;
+  },
+  getVarModels: function() {
+    return this.arguments_.map(varName => this.workspace.getVariable(varName));
+  }
+};
+//End functions

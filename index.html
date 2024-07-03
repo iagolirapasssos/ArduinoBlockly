@@ -230,7 +230,14 @@
                     <block type="variables_get_text"></block>
                     <block type="variables_get_boolean"></block>
                 </category>
-                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
+                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}">
+                  <block type="procedures_defnoreturn"></block>
+                  <block type="procedures_defreturn"></block>
+                  <block type="procedures_callnoreturn"></block>
+                  <block type="procedures_callreturn"></block>
+                  <block type="procedures_ifreturn"></block>
+                </category>
+
                 <category name="Arduino" colour="230">
                     <block type="arduino_setup"></block>
                     <block type="arduino_loop"></block>

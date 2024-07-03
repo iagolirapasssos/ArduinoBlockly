@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch('/ports')
         .then(response => response.json())
         .then(data => {
-            console.log('Available ports:', data);
+            //console.log('Available ports:', data);
             const selectPort = document.getElementById('serial-port');
             if (!selectPort) {
                 console.error('Dropdown element not found');
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(response => response.json())
         .then(data => {
-            console.log('Upload response:', data);
+            //console.log('Upload response:', data);
             if (data.message) {
                 alert(data.message);
                 startSerialMonitor(selectedPort);
@@ -180,27 +180,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     //To generators
     Blockly.Arduino.valueToCode = function(block, name, outerOrder) {
-      if (isNaN(outerOrder)) {
-        throw Error('Expecting valid order from block: ' + block);
-      }
-      var targetBlock = block.getInputTargetBlock(name);
-      if (!targetBlock) {
-        return ['', Blockly.Arduino.ORDER_ATOMIC];
-      }
+        if (isNaN(outerOrder)) {
+            throw Error('Expecting valid order from block: ' + block);
+        }
+        var targetBlock = block.getInputTargetBlock(name);
+        if (!targetBlock) {
+            return ['', Blockly.Arduino.ORDER_ATOMIC];
+        }
 
-      var tuple = Blockly.Arduino.blockToCode(targetBlock);
-      if (!Array.isArray(tuple)) {
-        tuple = [tuple, Blockly.Arduino.ORDER_ATOMIC];
-      }
-      var code = tuple[0];
-      var innerOrder = tuple[1];
-      if (isNaN(innerOrder)) {
-        throw Error('Expecting valid order from value block: ' + targetBlock.type);
-      }
-      if (code && outerOrder <= innerOrder) {
-        code = '(' + code + ')';
-      }
-      return [code, innerOrder];
+        var tuple = Blockly.Arduino.blockToCode(targetBlock);
+        if (!Array.isArray(tuple)) {
+            tuple = [tuple, Blockly.Arduino.ORDER_ATOMIC];
+        }
+        var code = tuple[0];
+        var innerOrder = tuple[1];
+        if (isNaN(innerOrder)) {
+            throw Error('Expecting valid order from value block: ' + targetBlock.type);
+        }
+        if (code && outerOrder <= innerOrder) {
+            code = '(' + code + ')';
+        }
+
+        return [code, innerOrder];
     };
 
     Blockly.Arduino.statementToCode = function(block, name) {
@@ -216,43 +217,43 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     Blockly.Arduino.blockToCode = function(block) {
-      if (!block) {
-        return '';
-      }
-
-      if (block.isEnabled() && !block.hasDisabledReason()) {
-        var func = this[block.type];
-        if (typeof func !== 'function') {
-          throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
-        }
-        var code = func.call(this, block);
-
-        // Se code não for um array, transforma em uma tupla
-        if (!Array.isArray(code)) {
-          code = [code, Blockly.Arduino.ORDER_ATOMIC];
+        if (!block) {
+            return '';
         }
 
-        // Adiciona o código dos blocos conectados abaixo
-        var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
-        var nextCode = this.blockToCode(nextBlock);
-        if (Array.isArray(nextBlock)) {
-            nextBlock = nextBlock[0];
-        }
+        if (block.isEnabled() && !block.hasDisabledReason()) {
+            var func = this[block.type];
+            if (typeof func !== 'function') {
+                throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
+            }
+            var code = func.call(this, block);
 
-        if (Array.isArray(nextCode)) {
-            nextCode = nextCode[0];
-        }
+            // Se code não for um array, transforma em uma tupla
+            if (!Array.isArray(code)) {
+                code = [code, Blockly.Arduino.ORDER_ATOMIC];
+            }
 
-        return [code[0] + nextCode, code[1]];
-      } else {
-        return this.scrub_(block, '');
-      }
+            // Adiciona o código dos blocos conectados abaixo
+            var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+            var nextCode = this.blockToCode(nextBlock);
+
+            if (Array.isArray(nextBlock)) {
+                nextBlock = nextBlock[0];
+            }
+            if (Array.isArray(nextCode)) {
+                nextCode = nextCode[0];
+            }
+
+            return [code[0] + nextCode, code[1]];
+        } else {
+            return this.scrub_(block, '');
+        }
     };
 
     Blockly.Arduino.scrub_ = function(block, code) {
-      const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
-      const nextCode = Blockly.Arduino.blockToCode(nextBlock);
-      return code + nextCode;
+        const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+        const nextCode = Blockly.Arduino.blockToCode(nextBlock);
+        return code + nextCode;
     };
 
     Blockly.Arduino.workspaceToCode = function(workspace) {
@@ -330,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({ code, port, board })
         }).then(response => response.json())
           .then(data => {
-              console.log(data);
+              //console.log(data);
               if (data.message) {
                   alert('Code uploaded successfully!');
                   startSerialMonitor(port);
@@ -385,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function () {
         while ((match = blockDefRegex.exec(scriptContent)) !== null) {
             blockTypes.push(match[1]);
         }
-        console.log("Extracted block types:", blockTypes);
+        //console.log("Extracted block types:", blockTypes);
         return blockTypes;
     }
 
@@ -397,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const extensionCode = match[2];
             try {
                 eval(`Blockly.Extensions.register('${extensionName}', function() {${extensionCode}});`);
-                console.log(`Registered extension: ${extensionName}`);
+                //console.log(`Registered extension: ${extensionName}`);
             } catch (error) {
                 console.error(`Error registering extension ${extensionName}:`, error);
             }
@@ -411,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             try {
                 eval(`Blockly.${language}['${blockType}'] = function(block) {${generatorCode}};`);
-                console.log(`Registered ${language} generator for block: ${blockType}`);
+                //console.log(`Registered ${language} generator for block: ${blockType}`);
             } catch (error) {
                 console.error(`Error registering ${language} generator for block: ${blockType}`, error);
             }
@@ -434,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         languages.forEach(language => {
-            console.log(`Registered ${language} generators:`, Object.keys(Blockly[language] || {}));
+            //console.log(`Registered ${language} generators:`, Object.keys(Blockly[language] || {}));
         });
     }
 
@@ -469,10 +470,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     workspace.updateToolbox(document.getElementById('toolbox'));
 
-                    console.log("Extension loaded and registered:", scriptName);
-                    console.log("Blocks found:", blocks);
+                    alert("Extension loaded and registered successfully!");
+
+                    //console.log("Extension loaded and registered:", scriptName);
+                    //console.log("Blocks found:", blocks);
                 } catch (error) {
                     console.error("Error loading extension:", error);
+                    alert("Error loading extension:", error);
                 }
             };
             reader.readAsText(file);
