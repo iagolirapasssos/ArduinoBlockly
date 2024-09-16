@@ -11,7 +11,7 @@
     "@blockly/workspace-backpack": "^6.0.2",
     "body-parser": "^1.20.2",
     "child_process": "^1.0.2",
-    "express": "^4.19.2",
+    "express": "^4.20.0",
     "jsdom": "^21.1.2",
     "module-alias": "^2.2.3",
     "serialport": "^9.2.8",
