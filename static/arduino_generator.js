@@ -1134,3 +1134,11 @@ function cleanAndStoreText(text, startIndex, endIndex) {
         return text;
     }
 }
+
+//Custom code
+Blockly.Arduino['custom_code'] = function(block) {
+  var code = block.getFieldValue('CUSTOM_CODE') + ';\n';
+  return code;
+};
+
+

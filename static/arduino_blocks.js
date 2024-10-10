@@ -606,3 +606,18 @@ Blockly.Blocks['procedures_ifreturn'] = {
   }
 };
 //End functions
+
+//Custom code
+Blockly.Blocks['custom_code'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Custom Code")
+        .appendField(new Blockly.FieldTextInput('#include "dht.h"'), 'CUSTOM_CODE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(160);
+    this.setTooltip("Adicione código customizado ao seu programa.");
+    this.setHelpUrl("");
+  }
+};
+

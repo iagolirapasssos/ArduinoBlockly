@@ -7,15 +7,20 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "@blockly/field-multilineinput": "^5.0.10",
     "@blockly/theme-dark": "^7.0.1",
     "@blockly/workspace-backpack": "^6.0.2",
+    "axios": "^1.7.7",
     "body-parser": "^1.20.2",
     "child_process": "^1.0.2",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "jsdom": "^21.1.2",
     "module-alias": "^2.2.3",
+    "sanitize-filename": "^1.6.3",
     "serialport": "^9.2.8",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "ws": "^7.5.10"
   },
   "author": "Francisco Iago Lira Passos",
   "license": "MIT"

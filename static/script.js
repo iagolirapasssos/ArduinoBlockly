@@ -1,84 +1,83 @@
 // static/script.js
-function startSerialMonitor(selectedPort) {
-    const terminal = document.getElementById('serialMonitor');
-    terminal.innerHTML = ''; // Limpar o terminal
-
-    // Iniciar monitor serial
-    const eventSource = new EventSource(`/serial?port=${encodeURIComponent(selectedPort)}`);
-
-    eventSource.onmessage = function (event) {
-        const newLine = document.createElement('div');
-        newLine.textContent = event.data;
-        terminal.appendChild(newLine);
-        terminal.scrollTop = terminal.scrollHeight; // Rolagem automática
-    };
-
-    eventSource.onerror = function (error) {
-        console.error('Error in serial monitor:', error);
-        eventSource.close();
-    };
-
-    // Fechar monitor serial ao fechar a aba ou sair da página
-    window.addEventListener('beforeunload', function () {
-        eventSource.close();
-    });
+async function requestPort() {
+    try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        return port;
+    } catch (err) {
+        console.error('Error requesting port:', err);
+    }
 }
 
-function updatePortList() {
-    fetch('/ports')
-        .then(response => response.json())
-        .then(data => {
-            const selectPort = document.getElementById('serial-port');
-            if (!selectPort) {
-                console.error('Dropdown element not found');
-                return;
-            }
-            const selectedValue = selectPort.value; // Save the selected value
-            selectPort.innerHTML = '<option value="">Select a port</option>'; // Clear existing options
-            data.forEach(port => {
-                const option = document.createElement('option');
-                option.value = port.path;
-                option.text = `${port.path} (${port.board})`;
-                selectPort.appendChild(option);
-            });
-            selectPort.value = selectedValue; // Restore the selected value
-        })
-        .catch(error => {
-            console.error('Error fetching ports:', error);
-        });
+async function getPorts() {
+    try {
+        if ('serial' in navigator) {
+            const ports = await navigator.serial.getPorts();
+            return ports;
+        } else {
+            throw new Error('Web Serial API not supported.');
+        }
+    } catch (err) {
+        console.error('Error getting ports:', err);
+        return [];
+    }
+}
+
+async function startSerialMonitor(port) {
+    const terminal = document.getElementById('serialMonitor');
+    terminal.innerHTML = ''; // Clear the terminal
+
+    const reader = port.readable.getReader();
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+    const readerStream = textDecoder.readable.getReader();
+
+    try {
+        while (true) {
+            const { value, done } = await readerStream.read();
+            if (done) break;
+            const newLine = document.createElement('div');
+            newLine.textContent = value;
+            terminal.appendChild(newLine);
+            terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
+        }
+    } catch (err) {
+        console.error('Error reading data:', err);
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+async function writeSerialData(port, data) {
+    const writer = port.writable.getWriter();
+    const textEncoder = new TextEncoder();
+    const encodedData = textEncoder.encode(data);
+    await writer.write(encodedData);
+    writer.releaseLock();
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     const selectPort = document.getElementById('serial-port');
-    selectPort.addEventListener('click', function () {
+
+    selectPort.addEventListener('click', async function () {
         const previousValue = selectPort.value;
-        updatePortList();
-        setTimeout(() => {
-            selectPort.value = previousValue;
-        }, 100);
+        const ports = await getPorts();
+        updatePortList(ports, previousValue);
     });
 
-    fetch('/ports')
-        .then(response => response.json())
-        .then(data => {
-            //console.log('Available ports:', data);
-            const selectPort = document.getElementById('serial-port');
-            if (!selectPort) {
-                console.error('Dropdown element not found');
-                return;
-            }
-            data.forEach(port => {
-                const option = document.createElement('option');
-                option.value = port.path;
-                option.text = port.path;
-                selectPort.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching ports:', error);
+    async function updatePortList(ports, previousValue) {
+        const selectPort = document.getElementById('serial-port');
+        selectPort.innerHTML = '<option value="">Select a port</option>'; // Clear existing options
+        ports.forEach(port => {
+            const option = document.createElement('option');
+            option.value = port;
+            option.text = port;
+            selectPort.appendChild(option);
         });
+        selectPort.value = previousValue; // Restore the selected value
+    }
 
-    document.getElementById('upload-button').addEventListener('click', function () {
+    document.getElementById('upload-button').addEventListener('click', async function () {
         const selectPort = document.getElementById('serial-port');
         const selectBoard = document.getElementById('board');
         if (!selectPort || !selectBoard) {
@@ -94,27 +93,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const code = Blockly.Arduino.workspaceToCode(Blockly.getMainWorkspace());
 
-        // Send selected port, board, and code to the server
-        fetch('/upload', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ port: selectedPort, board: selectedBoard, code }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            //console.log('Upload response:', data);
-            if (data.message) {
-                alert(data.message);
-                startSerialMonitor(selectedPort);
-            } else {
-                alert('Upload failed');
-            }
-        })
-        .catch(error => {
+        try {
+            const port = await requestPort();
+            await writeSerialData(port, code);
+            alert('Code uploaded successfully!');
+            startSerialMonitor(port);
+        } catch (error) {
             console.error('Error uploading to Arduino:', error);
-        });
+            alert('Upload failed');
+        }
     });
 
     if (typeof Blockly === 'undefined') {
@@ -343,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
       hljs.highlightElement(output);
     }
 
-    document.getElementById('executeBtn').addEventListener('click', () => {
+    document.getElementById('executeBtn').addEventListener('click', async () => {
         const code = Blockly.Arduino.workspaceToCode(workspace);
         const selectPort = document.getElementById('serial-port');
         const selectBoard = document.getElementById('board');
@@ -355,25 +342,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Envie o código para o backend para compilar e enviar para o Arduino
-        fetch('/upload', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ code, port, board })
-        }).then(response => response.json())
-          .then(data => {
-              //console.log(data);
-              if (data.message) {
-                  alert('Code uploaded successfully!');
-                  startSerialMonitor(port);
-              } else {
-                  alert('Failed to upload code.');
-              }
-          }).catch(error => {
-              console.error('Error uploading code:', error);
-          });
+        try {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+
+            const writer = port.writable.getWriter();
+            const encoder = new TextEncoder();
+            const encodedCode = encoder.encode(code);
+            await writer.write(encodedCode);
+            writer.releaseLock();
+
+            startSerialMonitor(port);
+        } catch (error) {
+            console.error('Error uploading to Arduino:', error);
+        }
     });
 
     document.getElementById('saveBtn').addEventListener('click', function () {
@@ -419,7 +401,6 @@ document.addEventListener('DOMContentLoaded', function () {
         while ((match = blockDefRegex.exec(scriptContent)) !== null) {
             blockTypes.push(match[1]);
         }
-        //console.log("Extracted block types:", blockTypes);
         return blockTypes;
     }
 
@@ -431,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const extensionCode = match[2];
             try {
                 eval(`Blockly.Extensions.register('${extensionName}', function() {${extensionCode}});`);
-                //console.log(`Registered extension: ${extensionName}`);
             } catch (error) {
                 console.error(`Error registering extension ${extensionName}:`, error);
             }
@@ -445,7 +425,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             try {
                 eval(`Blockly.${language}['${blockType}'] = function(block) {${generatorCode}};`);
-                //console.log(`Registered ${language} generator for block: ${blockType}`);
             } catch (error) {
                 console.error(`Error registering ${language} generator for block: ${blockType}`, error);
             }
@@ -465,10 +444,6 @@ document.addEventListener('DOMContentLoaded', function () {
             while ((match = generatorRegex.exec(scriptContent)) !== null) {
                 createAndRegisterGenerator(language, match[1], match[2]);
             }
-        });
-
-        languages.forEach(language => {
-            //console.log(`Registered ${language} generators:`, Object.keys(Blockly[language] || {}));
         });
     }
 
@@ -504,9 +479,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     workspace.updateToolbox(document.getElementById('toolbox'));
 
                     alert("Extension loaded and registered successfully!");
-
-                    //console.log("Extension loaded and registered:", scriptName);
-                    //console.log("Blocks found:", blocks);
                 } catch (error) {
                     console.error("Error loading extension:", error);
                     alert("Error loading extension:", error);
@@ -516,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    function refreshVariables(workspace) {
+        function refreshVariables(workspace) {
         const variables = Blockly.Variables.allUsedVarModels(workspace);
         variables.sort((a, b) => a.name.localeCompare(b.name)); // Ordenar as variáveis alfabeticamente
 

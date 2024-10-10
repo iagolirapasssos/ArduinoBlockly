@@ -320,3 +320,67 @@ node app.js
 - In your web browser, access `http://<YOUR_NOTEBOOK_IP>:3000`, where `<YOUR_NOTEBOOK_IP>` is the IP address you found in step 2.
 
 This should allow all devices connected to the same Wi-Fi network to access your Node.js server using your notebook's IP address. Ensure your firewall settings allow traffic on port 3000.
+
+
+## To resolve the issue of not finding the Arduino board on Windows, follow these steps:
+
+### 1. Install Arduino Drivers
+Ensure that the Arduino drivers are correctly installed on the Windows PC. You can download the latest drivers from the official Arduino website:
+- [Arduino Drivers](https://www.arduino.cc/en/Guide/DriverInstallation)
+
+### 2. Check the COM Port in Device Manager
+1. Connect your Arduino to the Windows PC via USB.
+2. Open **Device Manager**:
+   - Right-click on the **Start** icon and select **Device Manager**.
+3. Expand the **Ports (COM & LPT)** section.
+4. Check if the Arduino is listed as **Arduino Uno (COMx)**, where **x** is the COM port number assigned.
+
+### 3. Update the Drivers
+1. In Device Manager, right-click on the Arduino device and select **Update Driver**.
+2. Select **Browse my computer for drivers** and then **Let me pick from a list of available drivers on my computer**.
+3. Select **Arduino Uno** (or the appropriate model) and follow the instructions to complete the driver update.
+
+### 4. Check the Physical Connection and USB Cable
+- Ensure that the USB cable is working correctly. Test with another USB cable to make sure the issue is not the cable.
+- Try connecting the Arduino to different USB ports on the PC.
+
+### 5. Test the Connection with the Arduino IDE
+1. Open the **Arduino IDE**.
+2. Go to **Tools** > **Port** and select the COM port to which the Arduino is connected.
+3. Try uploading a basic sketch, such as **Blink**, to check if the connection is working.
+
+### 6. Update the Script for Board Detection on Windows
+Modify the Node.js script to include specific support for COM ports on Windows:
+
+```javascript
+app.get('/ports', (req, res) => {
+    exec('arduino-cli board list', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error: ${error.message}`);
+            return res.status(500).json({ error: error.message });
+        }
+        if (stderr) {
+            console.error(`Stderr: ${stderr}`);
+            return res.status(500).json({ error: stderr });
+        }
+
+        const ports = stdout.split('\n')
+            .filter(line => line.includes('/dev/tty') || line.includes('COM'))
+            .map(line => {
+                const [port, , board, , , name] = line.split(/\s+/);
+                return { path: port, board: name || 'Unknown Board' };
+            });
+
+        res.json(ports);
+    });
+});
+```
+
+### 7. Reinstall or Update the Arduino CLI
+Ensure that the Arduino CLI is up-to-date and properly installed. This can help in detecting Arduino boards on different systems:
+```sh
+arduino-cli version
+arduino-cli upgrade
+```
+
+By following these steps, you should be able to connect and detect the Arduino board on the Windows PC. If the issue persists, it may be necessary to check specific operating system configurations or consult the Arduino documentation and support forums.
