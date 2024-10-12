@@ -68,38 +68,91 @@ nav ul li ul li a:hover {
 .container {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: flex-start;
     min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
-.editor-container, .output-container, .terminal-container, .blocklyDiv {
-    width: 90%;
-    max-width: 1200px;
-    margin: 10px 0;
+.main-content {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 200px);
+    margin-bottom: 20px;
+}
+
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-right: 10px;
+}
+
+.output-container {
+    width: 300px;
+    min-width: 200px;
+    max-width: 50%;
+    position: relative;
+    background-color: #1e1e1e;
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.resize-handle {
+    position: absolute;
+    left: -5px;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    cursor: ew-resize;
+}
+
+.blockly-area {
+    flex: 1;
+    min-height: 200px;
     border: 2px solid #444;
     border-radius: 8px;
     background-color: #1e1e1e;
-    padding: 20px;
+}
+
+#code-output {
+    width: 100%;
+    height: calc(100% - 40px);
+    border: none;
+    background-color: transparent;
+    padding: 10px;
+    overflow: auto;
+    white-space: pre;
+}
+
+.serial-monitor-container {
+    height: 200px;
+}
+
+.serial-monitor {
+    height: calc(100% - 40px);
+    width: 100%;
+    overflow-y: scroll;
+    background: #f1f1f1;
+    color: #000;
+    padding: 10px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    font-family: 'Courier New', Courier, monospace;
 }
 
 h2 {
     color: #ffffff;
 }
 
-.blockly-area {
-    height: 480px;
-    width: 100%;
-    border: 2px solid #444;
-    border-radius: 8px;
-    background-color: #1e1e1e;
-}
-
 .blocklyText {
     fill: #000000 !important;
 }
 
-.output-container select {
+select, button {
     width: 100%;
     padding: 10px;
     margin-bottom: 10px;
@@ -109,27 +162,6 @@ h2 {
     border-radius: 4px;
 }
 
-#code-output {
-    width: 100%;
-    height: 400px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    background-color: #1e1e1e;
-    padding: 10px;
-    overflow: auto;
-    white-space: pre;
-}
-
-#blocklyWorkspace {
-    width: 100%;
-    height: 200px;
-    border: 2px solid #444;
-    border-radius: 2px;
-    background-color: #1e1e1e;
-    padding: 6px;
-    white-space: pre;
-}
-
 .hljs {
     background: #1e1e1e;
     color: #f1f1f1;
@@ -137,36 +169,94 @@ h2 {
 
 .blocklyTreeLabel {
     color: #ffffff;
+    font-size: 16px !important; /* Aumenta o tamanho da fonte das categorias */
+    line-height: 1.5 !important; /* Ajusta o espaçamento entre linhas */
+    white-space: normal !important;
+    word-wrap: break-word !important;
 }
 
-.terminal-container {
-    height: 300px;
-    overflow-y: auto;
-    background-color: #000;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-    padding: 10px;
-    border-radius: 5px;
-    width: 100%;
+/* Ajuste o tamanho mínimo dos blocos no flyout para evitar cortes */
+.blocklyFlyoutButton {
+    min-width: 200px !important;
 }
 
-.terminal-container h2 {
-    color: #ffffff;
-    margin-top: 0;
+.blocklyTreeRow {
+    height: auto !important; /* Permite que a altura da linha se ajuste ao conteúdo */
+    min-height: 32px !important; /* Define uma altura mínima para as linhas */
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
 }
 
-.terminal-container div {
+/* Aumenta o tamanho da fonte dos blocos no flyout */
+.blocklyFlyoutButton .blocklyText {
+    font-size: 14px !important;
+}
+
+.blocklyFlyoutLabelText {
+    font-size: 14px !important;
+}
+
+/* Ajusta o tamanho da fonte dos textos dentro dos blocos */
+.blocklyText {
+    font-size: 12px !important;
+}
+
+/* Ajusta o tamanho dos campos de entrada nos blocos */
+.blocklyHtmlInput {
+    font-size: 12px !important;
+}
+
+/* Aumenta o tamanho do ícone de expansão das categorias */
+.blocklyTreeIconOpen,
+.blocklyTreeIconClosed {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Ajusta o espaçamento dentro do toolbox */
+.blocklyToolboxDiv {
+    width: 250px !important; /* Aumente este valor conforme necessário */
+    padding: 5px !important;
+}
+
+/* Ajuste o layout do workspace para acomodar o toolbox mais largo */
+.blocklyWorkspace {
+    left: 250px !important; /* Deve ser o mesmo valor da largura do toolbox */
+}
+
+
+
+/* Ajustes adicionais para melhorar a aparência */
+#upload-button {
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+
+#upload-button:hover {
+    background-color: #45a049;
+}
+
+label {
+    display: block;
     margin-bottom: 5px;
+    color: #ddd;
 }
 
-.serial-monitor {
-    height: 70%;
-    width: 98%;
-    overflow-y: scroll;
-    background: #f1f1f1;
-    color: #000;
-    padding: 10px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    font-family: 'Courier New', Courier, monospace;
+/* Estilos para tornar a interface mais responsiva */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+
+    .editor-container, .output-container {
+        width: 100%;
+        max-width: 100%;
+        margin-right: 0;
+        margin-bottom: 20px;
+    }
+
+    .resize-handle {
+        display: none;
+    }
 }

@@ -12,9 +12,6 @@
     <script src="https://unpkg.com/blockly/msg/en.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/highlight.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/atom-one-dark.min.css">
-    <script src="static/arduino_blocks.js"></script>
-    <script src="static/arduino_generator.js"></script>
-    <script src="static/script.js"></script>
 </head>
 <body>
     <header>
@@ -38,241 +35,246 @@
         </nav>
     </header>
     <div class="container">
-        <div class="editor-container">
-            <!--<h2>Codeblocks</h2>-->
-            <label for="serial-port">Select Serial Port:</label>
-            <select id="serial-port">
-                <option value="">Select a port</option>
-            </select>
-            <label for="board">Select Board:</label>
-            <select id="board">
-                <option value="arduino:avr:uno">Arduino Uno</option>
-                <option value="arduino:avr:mega">Arduino Mega</option>
-            </select>
-            <button id="upload-button">Upload to Arduino</button>
-            <p>
-            <div id="blocklyDiv" class="blockly-area"></div>
-            <xml id="toolbox" style="display: none">
-                <category name="Logic" colour="%{BKY_LOGIC_HUE}">
-                    <block type="controls_if"></block>
-                    <block type="logic_compare"></block>
-                    <block type="logic_operation"></block>
-                    <block type="logic_negate"></block>
-                    <block type="logic_boolean"></block>
-                    <block type="logic_null"></block>
-                    <block type="logic_ternary"></block>
-                </category>
-                <category name="Loops" colour="%{BKY_LOOPS_HUE}">
-                    <block type="controls_repeat_ext">
-                        <value name="TIMES">
-                            <shadow type="math_number">
-                                <field name="NUM">10</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="controls_whileUntil"></block>
-                    <block type="controls_for">
-                        <value name="FROM">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="TO">
-                            <shadow type="math_number">
-                                <field name="NUM">10</field>
-                            </shadow>
-                        </value>
-                        <value name="BY">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="controls_forEach"></block>
-                    <block type="controls_flow_statements"></block>
-                </category>
-                <category name="Math" colour="%{BKY_MATH_HUE}">
-                    <block type="math_number">
-                      <field name="NUM">0</field>
-                    </block>
+        <div class="main-content">
+            <div class="editor-container" id="editor-container">
+                <label for="serial-port">Select Serial Port:</label>
+                <select id="serial-port">
+                    <option value="">Select a port</option>
+                </select>
+                <button id="connect-button">Conectar ao Arduino</button>
 
-                    <block type="math_arithmetic"></block>
-                    <block type="math_single"></block>
-                    <block type="math_trig"></block>
-                    <block type="math_constant"></block>
-                    <block type="math_number_property"></block>
-                    <block type="math_round"></block>
-                    <block type="math_on_list"></block>
-                    <block type="math_modulo"></block>
-                    <block type="math_constrain">
-                        <value name="LOW">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="HIGH">
-                            <shadow type="math_number">
-                                <field name="NUM">100</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="math_random_int">
-                        <value name="FROM">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="TO">
-                            <shadow type="math_number">
-                                <field name="NUM">100</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="math_random_float"></block>
-                </category>
-                <category name="Text" colour="%{BKY_TEXTS_HUE}">
-                    <block type="text"></block>
-                    <block type="text_join"></block>
-                    <block type="text_append">
-                        <value name="TEXT">
-                            <shadow type="text"></shadow>
-                        </value>
-                    </block>
-                    <block type="text_length"></block>
-                    <block type="text_isEmpty"></block>
-                    <block type="text_indexOf">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_charAt">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_getSubstring">
-                        <value name="STRING">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_changeCase"></block>
-                    <block type="text_trim"></block>
-                    <block type="text_print"></block>
-                    <block type="text_prompt_ext">
-                        <value name="TEXT">
-                            <shadow type="text"></shadow>
-                        </value>
-                    </block>
-                </category>
-                <category name="Lists" colour="%{BKY_LISTS_HUE}">
-                    <block type="lists_create_with"></block>
-                    <block type="lists_create_with">
-                        <mutation items="0"></mutation>
-                    </block>
-                    <block type="lists_repeat">
-                        <value name="NUM">
-                            <shadow type="math_number">
-                                <field name="NUM">5</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="lists_length"></block>
-                    <block type="lists_isEmpty"></block>
-                    <block type="lists_indexOf">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_getIndex">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_setIndex">
-                        <value name="LIST">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_getSublist">
-                        <value name="LIST">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_split">
-                        <value name="DELIM">
-                            <shadow type="text">
-                                <field name="TEXT">,</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="lists_sort"></block>
-                </category>
-                <category name="Variables" colour="%{BKY_VARIABLES_HUE}">
-                    <block type="variables_declare_number"></block>
-                    <block type="variables_declare_text"></block>
-                    <block type="variables_declare_boolean"></block>
-                    <block type="variables_get_number"></block>
-                    <block type="variables_get_text"></block>
-                    <block type="variables_get_boolean"></block>
-                </category>
-                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
-				
-				<category name="Custom Code" colour="210">
-					<block type="custom_code"></block>
-					<block type="custom_multiple_code"></block>
-				</category>
-    
-                <category name="Arduino" colour="230">
-                    <block type="arduino_setup"></block>
-                    <block type="arduino_loop"></block>
-                    <block type="arduino_digital_write"></block>
-                    <block type="arduino_digital_read"></block>
-                    <block type="serial_begin"></block>
-                    <block type="analog_read"></block>
-                    <block type="digital_read"></block>
-                    <block type="digital_write"></block>
-                    <block type="pin_mode"></block>
-                    <block type="analog_write"></block>
-                    <block type="analog_reference"></block>
-                    <block type="delay"></block>
-                    <block type="delay_microseconds"></block>
-                    <block type="micros"></block>
-                    <block type="millis"></block>
-                    <block type="no_tone"></block>
-                    <block type="tone"></block>
-                    <block type="pulse_in"></block>
-                    <block type="pulse_in_long"></block>
-                </category>
-                <category name="Extensions" colour="160" id="extensionsCategory">
-                    <button text="Send Extension" callbackKey="sendExtension"></button>
-                </category>
-            </xml>
-            <h1>Monitor Serial</h1>
-            <div class="blocklyDiv">
-                <div id="blocklyWorkspace">
-                    <div id="serialMonitor" class="serial-monitor"></div>
-                </div>
+                <label for="board">Select Board:</label>
+                <select id="board">
+                    <option value="arduino:avr:uno">Arduino Uno</option>
+                    <option value="arduino:avr:mega">Arduino Mega</option>
+                </select>
+                <button id="upload-button">Upload to Arduino</button>
+                <p>
+                <div id="blocklyDiv" class="blockly-area"></div>
+                <xml id="toolbox" style="display: none">
+                    <category name="Logic" colour="%{BKY_LOGIC_HUE}">
+                        <block type="controls_if"></block>
+                        <block type="logic_compare"></block>
+                        <block type="logic_operation"></block>
+                        <block type="logic_negate"></block>
+                        <block type="logic_boolean"></block>
+                        <block type="logic_null"></block>
+                        <block type="logic_ternary"></block>
+                    </category>
+                    <category name="Loops" colour="%{BKY_LOOPS_HUE}">
+                        <block type="controls_repeat_ext">
+                            <value name="TIMES">
+                                <shadow type="math_number">
+                                    <field name="NUM">10</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="controls_whileUntil"></block>
+                        <block type="controls_for">
+                            <value name="FROM">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="TO">
+                                <shadow type="math_number">
+                                    <field name="NUM">10</field>
+                                </shadow>
+                            </value>
+                            <value name="BY">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="controls_forEach"></block>
+                        <block type="controls_flow_statements"></block>
+                    </category>
+                    <category name="Math" colour="%{BKY_MATH_HUE}">
+                        <block type="math_number">
+                          <field name="NUM">0</field>
+                        </block>
+                        <block type="math_arithmetic"></block>
+                        <block type="math_single"></block>
+                        <block type="math_trig"></block>
+                        <block type="math_constant"></block>
+                        <block type="math_number_property"></block>
+                        <block type="math_round"></block>
+                        <block type="math_on_list"></block>
+                        <block type="math_modulo"></block>
+                        <block type="math_constrain">
+                            <value name="LOW">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="HIGH">
+                                <shadow type="math_number">
+                                    <field name="NUM">100</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="math_random_int">
+                            <value name="FROM">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="TO">
+                                <shadow type="math_number">
+                                    <field name="NUM">100</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="math_random_float"></block>
+                    </category>
+                    <category name="Text" colour="%{BKY_TEXTS_HUE}">
+                        <block type="text"></block>
+                        <block type="text_join"></block>
+                        <block type="text_append">
+                            <value name="TEXT">
+                                <shadow type="text"></shadow>
+                            </value>
+                        </block>
+                        <block type="text_length"></block>
+                        <block type="text_isEmpty"></block>
+                        <block type="text_indexOf">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_charAt">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_getSubstring">
+                            <value name="STRING">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_changeCase"></block>
+                        <block type="text_trim"></block>
+                        <block type="text_print"></block>
+                        <block type="text_prompt_ext">
+                            <value name="TEXT">
+                                <shadow type="text"></shadow>
+                            </value>
+                        </block>
+                    </category>
+                    <category name="Lists" colour="%{BKY_LISTS_HUE}">
+                        <block type="lists_create_with"></block>
+                        <block type="lists_create_with">
+                            <mutation items="0"></mutation>
+                        </block>
+                        <block type="lists_repeat">
+                            <value name="NUM">
+                                <shadow type="math_number">
+                                    <field name="NUM">5</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="lists_length"></block>
+                        <block type="lists_isEmpty"></block>
+                        <block type="lists_indexOf">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_getIndex">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_setIndex">
+                            <value name="LIST">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_getSublist">
+                            <value name="LIST">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_split">
+                            <value name="DELIM">
+                                <shadow type="text">
+                                    <field name="TEXT">,</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="lists_sort"></block>
+                    </category>
+                    <category name="Variables" colour="%{BKY_VARIABLES_HUE}">
+                        <block type="variables_declare_number"></block>
+                        <block type="variables_declare_text"></block>
+                        <block type="variables_declare_boolean"></block>
+                        <block type="variables_get_number"></block>
+                        <block type="variables_get_text"></block>
+                        <block type="variables_get_boolean"></block>
+                    </category>
+                    <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
+                    
+                    <category name="Custom Code" colour="210">
+                        <block type="custom_code"></block>
+                    </category>
+        
+                    <category name="Arduino" colour="230">
+                        <block type="arduino_setup"></block>
+                        <block type="arduino_loop"></block>
+                        <block type="arduino_digital_write"></block>
+                        <block type="arduino_digital_read"></block>
+                        <block type="serial_begin"></block>
+                        <block type="analog_read"></block>
+                        <block type="digital_read"></block>
+                        <block type="digital_write"></block>
+                        <block type="pin_mode"></block>
+                        <block type="analog_write"></block>
+                        <block type="analog_reference"></block>
+                        <block type="delay"></block>
+                        <block type="delay_microseconds"></block>
+                        <block type="micros"></block>
+                        <block type="millis"></block>
+                        <block type="no_tone"></block>
+                        <block type="tone"></block>
+                        <block type="pulse_in"></block>
+                        <block type="pulse_in_long"></block>
+                    </category>
+                    <category name="Extensions" colour="160" id="extensionsCategory">
+                        <button text="Send Extension" callbackKey="sendExtension"></button>
+                    </category>
+                </xml>
             </div>
-            <input type="file" id="extensionInput" style="display:none;" />
+            <div class="output-container" id="output-container">
+                <div class="resize-handle"></div>
+                <h2>Output</h2>
+                <pre id="code-output" class="hljs language-cpp"></pre>
+            </div>
         </div>
-        <div class="output-container">
-            <h2>Output</h2>
-            <pre id="code-output" class="hljs language-cpp"></pre>
+        <div class="serial-monitor-container">
+            <h2>Monitor Serial</h2>
+            <div id="serialMonitor" class="serial-monitor"></div>
         </div>
+        <input type="file" id="extensionInput" style="display:none;" />
     </div>
+
+    <script src="static/arduino_blocks.js"></script>
+    <script src="static/arduino_generator.js"></script>
+    <script src="static/script.js"></script>
+    <script src="static/setup.js"></script>
 </body>
 </html>

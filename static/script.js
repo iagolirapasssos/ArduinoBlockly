@@ -1,25 +1,53 @@
 // static/script.js
+// Função melhorada para solicitar acesso à porta serial
 async function requestPort() {
     try {
         const port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
+        console.log('Porta serial aberta com sucesso');
         return port;
     } catch (err) {
-        console.error('Error requesting port:', err);
+        if (err.name === 'SecurityError') {
+            console.error('Permissão negada para acessar a porta serial');
+            alert('Permissão para acessar a porta serial foi negada. Por favor, conceda permissão quando solicitado.');
+        } else if (err.name === 'NotFoundError') {
+            console.error('Nenhuma porta serial selecionada');
+            alert('Nenhuma porta serial foi selecionada. Por favor, selecione uma porta.');
+        } else {
+            console.error('Erro ao solicitar porta:', err);
+            alert('Ocorreu um erro ao tentar acessar a porta serial. Verifique se o Arduino está conectado corretamente.');
+        }
+        return null;
     }
 }
 
+// Função para obter a lista de portas disponíveis
 async function getPorts() {
     try {
         if ('serial' in navigator) {
             const ports = await navigator.serial.getPorts();
             return ports;
         } else {
-            throw new Error('Web Serial API not supported.');
+            throw new Error('Web Serial API não é suportada neste navegador.');
         }
     } catch (err) {
-        console.error('Error getting ports:', err);
+        console.error('Erro ao obter portas:', err);
         return [];
+    }
+}
+
+// Função para atualizar a lista de portas no dropdown
+async function updatePortList() {
+    const selectPort = document.getElementById('serial-port');
+    const ports = await navigator.serial.getPorts();
+    
+    selectPort.innerHTML = '<option value="">Selecione uma porta</option>';
+    
+    for (let port of ports) {
+        const option = document.createElement('option');
+        option.value = port.getInfo().usbVendorId;
+        option.textContent = `Porta (VendorID: ${port.getInfo().usbVendorId})`;
+        selectPort.appendChild(option);
     }
 }
 
@@ -58,24 +86,19 @@ async function writeSerialData(port, data) {
 
 document.addEventListener('DOMContentLoaded', function () {
     const selectPort = document.getElementById('serial-port');
-
-    selectPort.addEventListener('click', async function () {
-        const previousValue = selectPort.value;
-        const ports = await getPorts();
-        updatePortList(ports, previousValue);
-    });
-
-    async function updatePortList(ports, previousValue) {
-        const selectPort = document.getElementById('serial-port');
-        selectPort.innerHTML = '<option value="">Select a port</option>'; // Clear existing options
-        ports.forEach(port => {
-            const option = document.createElement('option');
-            option.value = port;
-            option.text = port;
-            selectPort.appendChild(option);
-        });
-        selectPort.value = previousValue; // Restore the selected value
+    const connectButton = document.getElementById('connect-button');
+    
+    if (connectButton) {
+        connectButton.addEventListener('click', connectToArduino);
     }
+
+    selectPort.addEventListener('click', async function() {
+        await updatePortList();
+        
+        if (selectPort.options.length <= 1) {
+            alert('Nenhuma porta serial detectada. Verifique se o Arduino está conectado e tente novamente.');
+        }
+    });
 
     document.getElementById('upload-button').addEventListener('click', async function () {
         const selectPort = document.getElementById('serial-port');
@@ -517,3 +540,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     workspace.addChangeListener(updateCode);
 });
+
+// Função melhorada para conectar ao Arduino
+async function connectToArduino() {
+    const selectPort = document.getElementById('serial-port');
+    const selectedPortId = selectPort.value;
+    
+    if (!selectedPortId) {
+        alert('Por favor, selecione uma porta antes de conectar.');
+        return;
+    }
+    
+    try {
+        const port = await requestPort();
+        if (port) {
+            console.log('Conectado com sucesso à porta:', port.getInfo());
+            alert('Conectado com sucesso ao Arduino!');
+            // Aqui você pode adicionar lógica adicional após a conexão bem-sucedida
+            // Por exemplo, habilitar botões de upload ou iniciar o monitor serial
+        }
+    } catch (err) {
+        console.error('Erro ao conectar à porta:', err);
+        alert('Erro ao conectar à porta selecionada. Verifique a conexão e tente novamente.');
+    }
+}

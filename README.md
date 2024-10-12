@@ -9,50 +9,6 @@ This tutorial will guide you through setting up and using the Arduino Blockly ID
 Before we begin, ensure you have the following installed on your system:
 - Node.js
 - npm (Node Package Manager)
-- Arduino CLI
-
-## Installing Node.js and Arduino CLI
-
-### Windows
-
-1. **Node.js**:
-   - Download the latest Node.js installer from [nodejs.org](https://nodejs.org/).
-   - Run the installer and follow the prompts. Make sure to check the option to install npm.
-
-2. **Arduino CLI**:
-   - Download the latest `arduino-cli` from the [Arduino CLI releases page](https://github.com/arduino/arduino-cli/releases).
-   - Extract the ZIP file and (optional) add the folder to your system PATH for easy access.
-
-### macOS
-
-1. **Node.js**:
-   - You can install Node.js using Homebrew:
-     ```bash
-     brew install node
-     ```
-
-2. **Arduino CLI**:
-   - Download the latest `arduino-cli` from the [Arduino CLI releases page](https://github.com/arduino/arduino-cli/releases).
-   - Extract the ZIP file and move the `arduino-cli` binary to `/usr/local/bin`:
-     ```bash
-     mv path/to/arduino-cli /usr/local/bin/
-     ```
-
-### Linux
-
-1. **Node.js**:
-   - Install Node.js using your package manager. For example, on Ubuntu:
-     ```bash
-     sudo apt update
-     sudo apt install nodejs npm
-     ```
-
-2. **Arduino CLI**:
-   - Download the latest `arduino-cli` from the [Arduino CLI releases page](https://github.com/arduino/arduino-cli/releases).
-   - Extract the ZIP file and move the `arduino-cli` binary to `/usr/local/bin`:
-     ```bash
-     sudo mv path/to/arduino-cli /usr/local/bin/
-     ```
 
 ## Step 1: Setting Up the Project
 
@@ -99,8 +55,8 @@ ArduinoBlockly:
 │       └── temporary_sketch.ino  # Temporary Arduino sketch
 ├── static                   # Static files directory
 │   ├── arduino_blocks.js    # Custom Blockly blocks
-│   ├── arduino_generator.js  # Arduino code generator
-│   ├── custom_generators.js  # Custom code generators
+│   ├── arduino_generator.js # Arduino code generator
+│   ├── custom_generators.js # Custom code generators
 │   ├── favicon.ico          # Favicon
 │   ├── script.js            # Custom scripts
 │   └── style.css            # Custom styles
@@ -187,7 +143,6 @@ For more information and advanced customization, refer to the official Blockly a
 
 ---
 
-<<<<<<< HEAD
 ## Creating a Private Network Using Your Notebook's IP Address
 
 To create a private network accessible only by devices connected to your Wi-Fi and run your Node.js application on this network, follow these steps:
@@ -429,6 +384,3 @@ arduino-cli upgrade
 ```
 
 By following these steps, you should be able to connect and detect the Arduino board on the Windows PC. If the issue persists, it may be necessary to check specific operating system configurations or consult the Arduino documentation and support forums.
-=======
-Feel free to adjust any details as needed!
->>>>>>> 570976aaf47889d8cda045051cb61d95ce8ad8ea
