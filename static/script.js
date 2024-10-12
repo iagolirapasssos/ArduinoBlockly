@@ -24,14 +24,14 @@ async function requestPort() {
 // Função para obter a lista de portas disponíveis
 async function getPorts() {
     try {
-        if ('serial' in navigator) {
-            const ports = await navigator.serial.getPorts();
-            return ports;
-        } else {
-            throw new Error('Web Serial API não é suportada neste navegador.');
+        const response = await fetch('/ports');
+        if (!response.ok) {
+            throw new Error('Failed to fetch ports');
         }
+        const ports = await response.json();
+        return ports;
     } catch (err) {
-        console.error('Erro ao obter portas:', err);
+        console.error('Error fetching ports:', err);
         return [];
     }
 }
@@ -39,17 +39,32 @@ async function getPorts() {
 // Função para atualizar a lista de portas no dropdown
 async function updatePortList() {
     const selectPort = document.getElementById('serial-port');
-    const ports = await navigator.serial.getPorts();
-    
     selectPort.innerHTML = '<option value="">Selecione uma porta</option>';
     
-    for (let port of ports) {
+    try {
+        const ports = await getPorts();
+        for (let port of ports) {
+            const option = document.createElement('option');
+            option.value = port.path;
+            option.textContent = `${port.path} - ${port.manufacturer || 'Unknown'}`;
+            selectPort.appendChild(option);
+        }
+        
+        if (ports.length === 0) {
+            const option = document.createElement('option');
+            option.textContent = 'Nenhuma porta detectada';
+            option.disabled = true;
+            selectPort.appendChild(option);
+        }
+    } catch (err) {
+        console.error('Erro ao obter portas:', err);
         const option = document.createElement('option');
-        option.value = port.getInfo().usbVendorId;
-        option.textContent = `Porta (VendorID: ${port.getInfo().usbVendorId})`;
+        option.textContent = 'Erro ao listar portas';
+        option.disabled = true;
         selectPort.appendChild(option);
     }
 }
+
 
 async function startSerialMonitor(port) {
     const terminal = document.getElementById('serialMonitor');
@@ -84,31 +99,86 @@ async function writeSerialData(port, data) {
     writer.releaseLock();
 }
 
+let selectedPortPath = ''; // Variável para armazenar a porta selecionada
+let selectedBoard = '';
+
 document.addEventListener('DOMContentLoaded', function () {
     const selectPort = document.getElementById('serial-port');
     const connectButton = document.getElementById('connect-button');
+    const uploadButton = document.getElementById('upload-button');
     
     if (connectButton) {
         connectButton.addEventListener('click', connectToArduino);
     }
 
+    selectPort.addEventListener('change', function() {
+        selectedPortPath = selectPort.value;
+        console.log('Porta selecionada:', selectedPortPath);
+        // Habilitar o botão de upload quando uma porta é selecionada
+        uploadButton.disabled = !selectedPortPath;
+    });
+
+
     selectPort.addEventListener('click', async function() {
-        await updatePortList();
-        
-        if (selectPort.options.length <= 1) {
-            alert('Nenhuma porta serial detectada. Verifique se o Arduino está conectado e tente novamente.');
+        if (!('serial' in navigator)) {
+            alert('Seu navegador não suporta a Web Serial API. Por favor, use um navegador compatível, como Chrome ou Edge.');
+            return;
+        }
+
+        try {
+            await updatePortList();
+            
+            if (selectPort.options.length <= 1) {
+                alert('Nenhuma porta serial detectada. Verifique se o Arduino está conectado e tente novamente.');
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar lista de portas:', error);
+            alert('Ocorreu um erro ao tentar listar as portas seriais. Por favor, tente novamente.');
         }
     });
 
-    document.getElementById('upload-button').addEventListener('click', async function () {
-        const selectPort = document.getElementById('serial-port');
+    uploadButton.addEventListener('click', async function () {
+        if (!selectedPortPath) {
+            alert('Por favor, selecione uma porta antes de fazer o upload.');
+            return;
+        }
+
         const selectBoard = document.getElementById('board');
+        const selectedBoard = selectBoard.value;
+
+        if (!selectedBoard) {
+            alert('Por favor, selecione uma placa Arduino antes de fazer o upload.');
+            return;
+        }
+
+        const code = Blockly.Arduino.workspaceToCode(Blockly.getMainWorkspace());
+
+        try {
+            await uploadCode(code, selectedBoard);
+        } catch (error) {
+            console.error('Error uploading to Arduino:', error);
+            alert('Upload failed: ' + error.message);
+        }
+    });
+
+    // Atualizar a lista de portas assim que a página carregar
+    updatePortList().catch(error => {
+        console.error('Erro ao carregar lista de portas inicial:', error);
+    });
+
+    document.getElementById('upload-button').addEventListener('click', async function () {
+        let selectPort = selectedPortPath;
+        let selectBoard = selectedBoard;
+        
         if (!selectPort || !selectBoard) {
             console.error('Dropdown element not found');
             return;
         }
-        const selectedPort = selectPort.value;
-        const selectedBoard = selectBoard.value;
+
+        if (selectPort) selectedPort = document.getElementById('serial-port').value;
+        if (selectBoard) selectedBoard = document.getElementById('board').value;
+
+        console.log(`selectedPort: ${selectedPort} e selectedBoard: ${selectedBoard}`);
         if (!selectedPort || !selectedBoard) {
             console.error('No port or board selected');
             return;
@@ -544,23 +614,90 @@ document.addEventListener('DOMContentLoaded', function () {
 // Função melhorada para conectar ao Arduino
 async function connectToArduino() {
     const selectPort = document.getElementById('serial-port');
-    const selectedPortId = selectPort.value;
+    const selectedPortPath = selectPort.value;
     
-    if (!selectedPortId) {
+    if (!selectedPortPath) {
         alert('Por favor, selecione uma porta antes de conectar.');
         return;
     }
     
     try {
-        const port = await requestPort();
-        if (port) {
-            console.log('Conectado com sucesso à porta:', port.getInfo());
-            alert('Conectado com sucesso ao Arduino!');
-            // Aqui você pode adicionar lógica adicional após a conexão bem-sucedida
-            // Por exemplo, habilitar botões de upload ou iniciar o monitor serial
+        const response = await fetch('/connect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ portPath: selectedPortPath }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to connect to port');
         }
+
+        const result = await response.json();
+        console.log('Conectado com sucesso à porta:', selectedPortPath);
+        alert('Conectado com sucesso ao Arduino!');
+        // Aqui você pode adicionar lógica adicional após a conexão bem-sucedida
     } catch (err) {
         console.error('Erro ao conectar à porta:', err);
         alert('Erro ao conectar à porta selecionada. Verifique a conexão e tente novamente.');
     }
 }
+
+// Atualize esta função para usar a nova rota de upload
+async function connectToArduino() {
+    if (!selectedPortPath) {
+        alert('Por favor, selecione uma porta antes de conectar.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/connect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ portPath: selectedPortPath }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to connect to port');
+        }
+
+        const result = await response.json();
+        console.log('Conectado com sucesso à porta:', selectedPortPath);
+        alert('Conectado com sucesso ao Arduino!');
+        // Aqui você pode adicionar lógica adicional após a conexão bem-sucedida
+    } catch (err) {
+        console.error('Erro ao conectar à porta:', err);
+        alert('Erro ao conectar à porta selecionada. Verifique a conexão e tente novamente.');
+    }
+}
+
+async function uploadCode(code, board) {
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ board, code, portPath: selectedPortPath }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to upload code');
+        }
+
+        const result = await response.json();
+        alert('Code uploaded successfully!');
+        // Implemente a lógica para iniciar o monitor serial, se necessário
+    } catch (error) {
+        console.error('Error uploading to Arduino:', error);
+        throw error;
+    }
+}
+
+// Atualizar a lista de portas assim que a página carregar
+updatePortList().catch(error => {
+    console.error('Erro ao carregar lista de portas inicial:', error);
+});

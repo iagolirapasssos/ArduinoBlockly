@@ -1,6 +1,7 @@
 /* static/style.css */
 
 body {
+    font-size: 18px !important; 
     font-family: Arial, sans-serif;
     background-color: #2b2b2b;
     color: #f1f1f1;
@@ -169,6 +170,7 @@ select, button {
 
 .blocklyTreeLabel {
     color: #ffffff;
+    font-weight: bold;
     font-size: 16px !important; /* Aumenta o tamanho da fonte das categorias */
     line-height: 1.5 !important; /* Ajusta o espaçamento entre linhas */
     white-space: normal !important;
@@ -259,4 +261,78 @@ label {
     .resize-handle {
         display: none;
     }
+}
+
+/*Controls*/
+.arduino-controls-container {
+    font-size: 18px !important; 
+    margin-bottom: 20px;
+    background-color: #333;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-group label {
+    flex: 0 0 150px;
+    margin-right: 15px;
+    color: #f1f1f1;
+}
+
+.input-button-group {
+    display: flex;
+    flex: 1;
+}
+
+.input-button-group select {
+    font-weight: bold; !important;
+    font-size: 30;
+    flex: 1;
+    margin-right: 10px;
+    padding: 8px;
+    background-color: #444;
+    color: #f1f1f1;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.input-button-group button {
+    font-weight: bold; !important;
+    font-size: 30;
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.input-button-group button:hover {
+    background-color: #45a049;
+}
+
+#connect-button {
+    background-color: #2196F3;
+}
+
+#connect-button:hover {
+    background-color: #1976D2;
+}
+
+#upload-button {
+    background-color: #FF9800;
+}
+
+#upload-button:hover {
+    background-color: #F57C00;
 }

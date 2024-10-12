@@ -37,18 +37,27 @@
     <div class="container">
         <div class="main-content">
             <div class="editor-container" id="editor-container">
-                <label for="serial-port">Select Serial Port:</label>
-                <select id="serial-port">
-                    <option value="">Select a port</option>
-                </select>
-                <button id="connect-button">Conectar ao Arduino</button>
-
-                <label for="board">Select Board:</label>
-                <select id="board">
-                    <option value="arduino:avr:uno">Arduino Uno</option>
-                    <option value="arduino:avr:mega">Arduino Mega</option>
-                </select>
-                <button id="upload-button">Upload to Arduino</button>
+                <div class="arduino-controls-container">
+                    <div class="control-group">
+                        <label for="serial-port">Select Serial Port:</label>
+                        <div class="input-button-group">
+                            <select id="serial-port">
+                                <option value="">Select a port</option>
+                            </select>
+                            <button id="connect-button">Conectar ao Arduino</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="board">Select Board:</label>
+                        <div class="input-button-group">
+                            <select id="board">
+                                <option value="arduino:avr:uno">Arduino Uno</option>
+                                <option value="arduino:avr:mega">Arduino Mega</option>
+                            </select>
+                            <button id="upload-button">Upload to Arduino</button>
+                        </div>
+                    </div>
+                </div>
                 <p>
                 <div id="blocklyDiv" class="blockly-area"></div>
                 <xml id="toolbox" style="display: none">

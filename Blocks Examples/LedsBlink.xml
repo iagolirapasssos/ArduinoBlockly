@@ -1,0 +1,45 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="custom_code" id=":.!i|WZ:!cp!:;,%#PBz" x="50" y="70">
+    <field name="CUSTOM_CODE">#include "dht.h"</field>
+  </block>
+  <block type="arduino_setup" id="=!+jff#PV;i.lv:%Ri56" x="50" y="130">
+    <statement name="SETUP">
+      <block type="pin_mode" id="6~HRd)!Y%ve5RzIy%S:D">
+        <field name="PIN">13</field>
+        <field name="MODE">INPUT_PULLUP</field>
+      </block>
+    </statement>
+  </block>
+  <block type="arduino_loop" id="icGmqdF[BFj^7e%tG%v6" x="50" y="250">
+    <statement name="LOOP">
+      <block type="custom_code" id="o}o1vy1${V%ly%=.Px1)">
+        <field name="CUSTOM_CODE">ledsBlink()</field>
+      </block>
+    </statement>
+  </block>
+  <block type="procedures_defnoreturn" id="G8yEQ{(XsDIu!fHTj^nU" x="50" y="370">
+    <field name="NAME">ledsBlink</field>
+    <statement name="STACK">
+      <block type="digital_write" id="]LUas(V.C}o4{z}a~gye">
+        <field name="PIN">13</field>
+        <field name="STATE">HIGH</field>
+        <next>
+          <block type="delay" id="YvD]q+y!nfI~mN)8i:D1">
+            <field name="TIME">1000</field>
+            <next>
+              <block type="digital_write" id="6.0~0$88H@.tj}Hpv)D6">
+                <field name="PIN">13</field>
+                <field name="STATE">HIGH</field>
+                <next>
+                  <block type="delay" id="P/8d+@clWIn#=9Qy4KB2">
+                    <field name="TIME">1000</field>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+</xml>

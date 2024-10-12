@@ -1,5 +1,148 @@
-index.html:
+app.js:
+const express = require('express');
+const bodyParser = require('body-parser');
+const fs = require('fs').promises; // Use a versão promise do fs
+const { exec } = require('child_process');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+const sanitize = require('sanitize-filename');
 
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+app.use('/static', express.static('static'));
+
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+app.post('/upload', async (req, res) => {
+    const { port, board, code } = req.body;
+
+    const sketchName = sanitize(`temporary_sketch_${uuidv4()}`);
+    const sketchDir = path.join(__dirname, 'sketches', sketchName);
+    const sketchPath = path.join(sketchDir, `${sketchName}.ino`);
+
+    try {
+        await fs.mkdir(sketchDir, { recursive: true });
+        await fs.writeFile(sketchPath, code);
+
+        try {
+            await fs.access(sketchPath);
+        } catch (err) {
+            return res.status(500).json({ error: 'Failed to create sketch file' });
+        }
+
+        const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
+        exec(command, { cwd: sketchDir }, async (error, stdout, stderr) => {
+            await deleteDirectoryRecursive(sketchDir);
+
+            if (error) {
+                console.error(`Error: ${error.message}`);
+                return res.status(500).json({ error: error.message });
+            }
+            if (stderr) {
+                console.error(`Stderr: ${stderr}`);
+                return res.status(500).json({ error: stderr });
+            }
+            console.log(`Stdout: ${stdout}`);
+            res.json({ message: 'Upload successful', output: stdout });
+        });
+    } catch (err) {
+        console.error(`Error: ${err.message}`);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+async function deleteDirectoryRecursive(directoryPath) {
+    try {
+        const files = await fs.readdir(directoryPath);
+        await Promise.all(files.map(async (file) => {
+            const curPath = path.join(directoryPath, file);
+            const stat = await fs.lstat(curPath);
+            if (stat.isDirectory()) {
+                await deleteDirectoryRecursive(curPath);
+            } else {
+                await fs.unlink(curPath);
+            }
+        }));
+        await fs.rmdir(directoryPath);
+    } catch (err) {
+        console.error(`Error deleting directory ${directoryPath}:`, err);
+    }
+}
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
+
+
+client.js:
+const express = require('express');
+const { exec } = require('child_process');
+const bodyParser = require('body-parser');
+const serialport = require('serialport');
+const fs = require('fs').promises;
+
+const app = express();
+const port = 4000; // Porta do cliente
+
+app.use(bodyParser.json());
+
+// Rota para detectar portas seriais onde as placas Arduino estão conectadas
+app.get('/detect', async (req, res) => {
+    try {
+        const ports = await serialport.list();
+        const boards = ports.map(port => ({
+            path: port.path,
+            manufacturer: port.manufacturer
+        }));
+        res.json(boards);
+    } catch (err) {
+        console.error('Erro ao detectar portas seriais:', err);
+        res.status(500).send('Erro ao detectar portas seriais');
+    }
+});
+
+// Rota para fazer upload de código para a placa Arduino
+app.post('/upload', (req, res) => {
+    const { board, port, code } = req.body;
+
+    // Criar sketch temporário
+    const sketchName = 'temporary_sketch';
+    const sketchDir = `/tmp/sketches/${sketchName}`;
+    const sketchPath = `${sketchDir}/${sketchName}.ino`;
+
+    fs.mkdir(sketchDir, { recursive: true })
+        .then(() => fs.writeFile(sketchPath, code))
+        .then(() => {
+            const command = `arduino-cli compile -b ${board} ${sketchDir} && arduino-cli upload -p ${port} -b ${board} ${sketchDir}`;
+
+            exec(command, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Erro: ${error.message}`);
+                    return res.status(500).send(`Erro: ${error.message}`);
+                }
+                if (stderr) {
+                    console.error(`Erro: ${stderr}`);
+                    return res.status(500).send(`Erro: ${stderr}`);
+                }
+                res.send(`Upload bem-sucedido: ${stdout}`);
+            });
+        })
+        .catch((err) => {
+            console.error(`Erro ao criar sketch: ${err.message}`);
+            res.status(500).send(`Erro ao criar sketch: ${err.message}`);
+        });
+});
+
+app.listen(port, () => {
+    console.log(`Cliente rodando em http://localhost:${port}`);
+});
+
+
+index.html:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,9 +157,6 @@ index.html:
     <script src="https://unpkg.com/blockly/msg/en.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/highlight.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/atom-one-dark.min.css">
-    <script src="static/arduino_blocks.js"></script>
-    <script src="static/arduino_generator.js"></script>
-    <script src="static/script.js"></script>
 </head>
 <body>
     <header>
@@ -40,241 +180,316 @@ index.html:
         </nav>
     </header>
     <div class="container">
-        <div class="editor-container">
-            <!--<h2>Codeblocks</h2>-->
-            <label for="serial-port">Select Serial Port:</label>
-            <select id="serial-port">
-                <option value="">Select a port</option>
-            </select>
-            <label for="board">Select Board:</label>
-            <select id="board">
-                <option value="arduino:avr:uno">Arduino Uno</option>
-                <option value="arduino:avr:mega">Arduino Mega</option>
-            </select>
-            <button id="upload-button">Upload to Arduino</button>
-            <p>
-            <div id="blocklyDiv" class="blockly-area"></div>
-            <xml id="toolbox" style="display: none">
-                <category name="Logic" colour="%{BKY_LOGIC_HUE}">
-                    <block type="controls_if"></block>
-                    <block type="logic_compare"></block>
-                    <block type="logic_operation"></block>
-                    <block type="logic_negate"></block>
-                    <block type="logic_boolean"></block>
-                    <block type="logic_null"></block>
-                    <block type="logic_ternary"></block>
-                </category>
-                <category name="Loops" colour="%{BKY_LOOPS_HUE}">
-                    <block type="controls_repeat_ext">
-                        <value name="TIMES">
-                            <shadow type="math_number">
-                                <field name="NUM">10</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="controls_whileUntil"></block>
-                    <block type="controls_for">
-                        <value name="FROM">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="TO">
-                            <shadow type="math_number">
-                                <field name="NUM">10</field>
-                            </shadow>
-                        </value>
-                        <value name="BY">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="controls_forEach"></block>
-                    <block type="controls_flow_statements"></block>
-                </category>
-                <category name="Math" colour="%{BKY_MATH_HUE}">
-                    <block type="math_number">
-                      <field name="NUM">0</field>
-                    </block>
-
-                    <block type="math_arithmetic"></block>
-                    <block type="math_single"></block>
-                    <block type="math_trig"></block>
-                    <block type="math_constant"></block>
-                    <block type="math_number_property"></block>
-                    <block type="math_round"></block>
-                    <block type="math_on_list"></block>
-                    <block type="math_modulo"></block>
-                    <block type="math_constrain">
-                        <value name="LOW">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="HIGH">
-                            <shadow type="math_number">
-                                <field name="NUM">100</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="math_random_int">
-                        <value name="FROM">
-                            <shadow type="math_number">
-                                <field name="NUM">1</field>
-                            </shadow>
-                        </value>
-                        <value name="TO">
-                            <shadow type="math_number">
-                                <field name="NUM">100</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="math_random_float"></block>
-                </category>
-                <category name="Text" colour="%{BKY_TEXTS_HUE}">
-                    <block type="text"></block>
-                    <block type="text_join"></block>
-                    <block type="text_append">
-                        <value name="TEXT">
-                            <shadow type="text"></shadow>
-                        </value>
-                    </block>
-                    <block type="text_length"></block>
-                    <block type="text_isEmpty"></block>
-                    <block type="text_indexOf">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_charAt">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_getSubstring">
-                        <value name="STRING">
-                            <block type="variables_get">
-                                <field name="VAR">text</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="text_changeCase"></block>
-                    <block type="text_trim"></block>
-                    <block type="text_print"></block>
-                    <block type="text_prompt_ext">
-                        <value name="TEXT">
-                            <shadow type="text"></shadow>
-                        </value>
-                    </block>
-                </category>
-                <category name="Lists" colour="%{BKY_LISTS_HUE}">
-                    <block type="lists_create_with"></block>
-                    <block type="lists_create_with">
-                        <mutation items="0"></mutation>
-                    </block>
-                    <block type="lists_repeat">
-                        <value name="NUM">
-                            <shadow type="math_number">
-                                <field name="NUM">5</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="lists_length"></block>
-                    <block type="lists_isEmpty"></block>
-                    <block type="lists_indexOf">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_getIndex">
-                        <value name="VALUE">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_setIndex">
-                        <value name="LIST">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_getSublist">
-                        <value name="LIST">
-                            <block type="variables_get">
-                                <field name="VAR">list</field>
-                            </block>
-                        </value>
-                    </block>
-                    <block type="lists_split">
-                        <value name="DELIM">
-                            <shadow type="text">
-                                <field name="TEXT">,</field>
-                            </shadow>
-                        </value>
-                    </block>
-                    <block type="lists_sort"></block>
-                </category>
-                <category name="Variables" colour="%{BKY_VARIABLES_HUE}">
-                    <block type="variables_declare_number"></block>
-                    <block type="variables_declare_text"></block>
-                    <block type="variables_declare_boolean"></block>
-                    <block type="variables_get_number"></block>
-                    <block type="variables_get_text"></block>
-                    <block type="variables_get_boolean"></block>
-                </category>
-                <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
-
-                <category name="Arduino" colour="230">
-                    <block type="arduino_setup"></block>
-                    <block type="arduino_loop"></block>
-                    <block type="arduino_digital_write"></block>
-                    <block type="arduino_digital_read"></block>
-                    <block type="serial_begin"></block>
-                    <block type="analog_read"></block>
-                    <block type="digital_read"></block>
-                    <block type="digital_write"></block>
-                    <block type="pin_mode"></block>
-                    <block type="analog_write"></block>
-                    <block type="analog_reference"></block>
-                    <block type="delay"></block>
-                    <block type="delay_microseconds"></block>
-                    <block type="micros"></block>
-                    <block type="millis"></block>
-                    <block type="no_tone"></block>
-                    <block type="tone"></block>
-                    <block type="pulse_in"></block>
-                    <block type="pulse_in_long"></block>
-                </category>
-                <category name="Extensions" colour="160" id="extensionsCategory">
-                    <button text="Send Extension" callbackKey="sendExtension"></button>
-                </category>
-            </xml>
-            <h1>Monitor Serial</h1>
-            <div class="blocklyDiv">
-                <div id="blocklyWorkspace">
-                    <div id="serialMonitor" class="serial-monitor"></div>
+        <div class="main-content">
+            <div class="editor-container" id="editor-container">
+                <div class="arduino-controls-container">
+                    <div class="control-group">
+                        <label for="serial-port">Select Serial Port:</label>
+                        <div class="input-button-group">
+                            <select id="serial-port">
+                                <option value="">Select a port</option>
+                            </select>
+                            <button id="connect-button">Conectar ao Arduino</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="board">Select Board:</label>
+                        <div class="input-button-group">
+                            <select id="board">
+                                <option value="arduino:avr:uno">Arduino Uno</option>
+                                <option value="arduino:avr:mega">Arduino Mega</option>
+                            </select>
+                            <button id="upload-button">Upload to Arduino</button>
+                        </div>
+                    </div>
                 </div>
+                <p>
+                <div id="blocklyDiv" class="blockly-area"></div>
+                <xml id="toolbox" style="display: none">
+                    <category name="Logic" colour="%{BKY_LOGIC_HUE}">
+                        <block type="controls_if"></block>
+                        <block type="logic_compare"></block>
+                        <block type="logic_operation"></block>
+                        <block type="logic_negate"></block>
+                        <block type="logic_boolean"></block>
+                        <block type="logic_null"></block>
+                        <block type="logic_ternary"></block>
+                    </category>
+                    <category name="Loops" colour="%{BKY_LOOPS_HUE}">
+                        <block type="controls_repeat_ext">
+                            <value name="TIMES">
+                                <shadow type="math_number">
+                                    <field name="NUM">10</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="controls_whileUntil"></block>
+                        <block type="controls_for">
+                            <value name="FROM">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="TO">
+                                <shadow type="math_number">
+                                    <field name="NUM">10</field>
+                                </shadow>
+                            </value>
+                            <value name="BY">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="controls_forEach"></block>
+                        <block type="controls_flow_statements"></block>
+                    </category>
+                    <category name="Math" colour="%{BKY_MATH_HUE}">
+                        <block type="math_number">
+                          <field name="NUM">0</field>
+                        </block>
+                        <block type="math_arithmetic"></block>
+                        <block type="math_single"></block>
+                        <block type="math_trig"></block>
+                        <block type="math_constant"></block>
+                        <block type="math_number_property"></block>
+                        <block type="math_round"></block>
+                        <block type="math_on_list"></block>
+                        <block type="math_modulo"></block>
+                        <block type="math_constrain">
+                            <value name="LOW">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="HIGH">
+                                <shadow type="math_number">
+                                    <field name="NUM">100</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="math_random_int">
+                            <value name="FROM">
+                                <shadow type="math_number">
+                                    <field name="NUM">1</field>
+                                </shadow>
+                            </value>
+                            <value name="TO">
+                                <shadow type="math_number">
+                                    <field name="NUM">100</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="math_random_float"></block>
+                    </category>
+                    <category name="Text" colour="%{BKY_TEXTS_HUE}">
+                        <block type="text"></block>
+                        <block type="text_join"></block>
+                        <block type="text_append">
+                            <value name="TEXT">
+                                <shadow type="text"></shadow>
+                            </value>
+                        </block>
+                        <block type="text_length"></block>
+                        <block type="text_isEmpty"></block>
+                        <block type="text_indexOf">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_charAt">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_getSubstring">
+                            <value name="STRING">
+                                <block type="variables_get">
+                                    <field name="VAR">text</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="text_changeCase"></block>
+                        <block type="text_trim"></block>
+                        <block type="text_print"></block>
+                        <block type="text_prompt_ext">
+                            <value name="TEXT">
+                                <shadow type="text"></shadow>
+                            </value>
+                        </block>
+                    </category>
+                    <category name="Lists" colour="%{BKY_LISTS_HUE}">
+                        <block type="lists_create_with"></block>
+                        <block type="lists_create_with">
+                            <mutation items="0"></mutation>
+                        </block>
+                        <block type="lists_repeat">
+                            <value name="NUM">
+                                <shadow type="math_number">
+                                    <field name="NUM">5</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="lists_length"></block>
+                        <block type="lists_isEmpty"></block>
+                        <block type="lists_indexOf">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_getIndex">
+                            <value name="VALUE">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_setIndex">
+                            <value name="LIST">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_getSublist">
+                            <value name="LIST">
+                                <block type="variables_get">
+                                    <field name="VAR">list</field>
+                                </block>
+                            </value>
+                        </block>
+                        <block type="lists_split">
+                            <value name="DELIM">
+                                <shadow type="text">
+                                    <field name="TEXT">,</field>
+                                </shadow>
+                            </value>
+                        </block>
+                        <block type="lists_sort"></block>
+                    </category>
+                    <category name="Variables" colour="%{BKY_VARIABLES_HUE}">
+                        <block type="variables_declare_number"></block>
+                        <block type="variables_declare_text"></block>
+                        <block type="variables_declare_boolean"></block>
+                        <block type="variables_get_number"></block>
+                        <block type="variables_get_text"></block>
+                        <block type="variables_get_boolean"></block>
+                    </category>
+                    <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
+                    
+                    <category name="Custom Code" colour="210">
+                        <block type="custom_code"></block>
+                    </category>
+        
+                    <category name="Arduino" colour="230">
+                        <block type="arduino_setup"></block>
+                        <block type="arduino_loop"></block>
+                        <block type="arduino_digital_write"></block>
+                        <block type="arduino_digital_read"></block>
+                        <block type="serial_begin"></block>
+                        <block type="analog_read"></block>
+                        <block type="digital_read"></block>
+                        <block type="digital_write"></block>
+                        <block type="pin_mode"></block>
+                        <block type="analog_write"></block>
+                        <block type="analog_reference"></block>
+                        <block type="delay"></block>
+                        <block type="delay_microseconds"></block>
+                        <block type="micros"></block>
+                        <block type="millis"></block>
+                        <block type="no_tone"></block>
+                        <block type="tone"></block>
+                        <block type="pulse_in"></block>
+                        <block type="pulse_in_long"></block>
+                    </category>
+                    <category name="Extensions" colour="160" id="extensionsCategory">
+                        <button text="Send Extension" callbackKey="sendExtension"></button>
+                    </category>
+                </xml>
             </div>
-            <input type="file" id="extensionInput" style="display:none;" />
+            <div class="output-container" id="output-container">
+                <div class="resize-handle"></div>
+                <h2>Output</h2>
+                <pre id="code-output" class="hljs language-cpp"></pre>
+            </div>
         </div>
-        <div class="output-container">
-            <h2>Output</h2>
-            <pre id="code-output" class="hljs language-cpp"></pre>
+        <div class="serial-monitor-container">
+            <h2>Monitor Serial</h2>
+            <div id="serialMonitor" class="serial-monitor"></div>
         </div>
+        <input type="file" id="extensionInput" style="display:none;" />
     </div>
+
+    <script src="static/arduino_blocks.js"></script>
+    <script src="static/arduino_generator.js"></script>
+    <script src="static/script.js"></script>
+    <script src="static/setup.js"></script>
 </body>
 </html>
 
-arduino_blocks.js:
+LICENSE:
+MIT License
+
+Copyright (c) 2024 Iago lira
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+package.json:
+{
+  "name": "ArduinoBlockly",
+  "version": "1.0.0",
+  "description": "Projeto para listar portas seriais e compilar código Arduino usando Blockly",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "@blockly/field-multilineinput": "^5.0.10",
+    "@blockly/theme-dark": "^7.0.1",
+    "@blockly/workspace-backpack": "^6.0.2",
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.2",
+    "child_process": "^1.0.2",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "https-localhost": "^4.7.1",
+    "jsdom": "^21.1.2",
+    "module-alias": "^2.2.3",
+    "sanitize-filename": "^1.6.3",
+    "serialport": "^9.2.8",
+    "uuid": "^10.0.0",
+    "ws": "^7.5.10"
+  },
+  "author": "Francisco Iago Lira Passos",
+  "license": "MIT"
+}
+
+
+static/arduino_blocks.js:
 // static/arduino_blocks.js
 Blockly.Blocks['text_print'] = {
     init: function() {
@@ -884,7 +1099,23 @@ Blockly.Blocks['procedures_ifreturn'] = {
 };
 //End functions
 
-arduino_generators.js:
+//Custom code
+Blockly.Blocks['custom_code'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("Custom Code")
+        .appendField(new Blockly.FieldTextInput('#include "dht.h"'), 'CUSTOM_CODE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(160);
+    this.setTooltip("Adicione código customizado ao seu programa.");
+    this.setHelpUrl("");
+  }
+};
+
+
+
+static/arduino_generator.js:
 // static/arduino_generator.js
 Blockly.Arduino = new Blockly.Generator('Arduino');
 
@@ -2021,3 +2252,1031 @@ function cleanAndStoreText(text, startIndex, endIndex) {
         return text;
     }
 }
+
+//Custom code
+Blockly.Arduino['custom_code'] = function(block) {
+  var code = block.getFieldValue('CUSTOM_CODE') + ';\n';
+  return code;
+};
+
+
+
+
+static/custom_generators.js:
+// static/custom_generators.js
+
+Blockly.Msg.LOGIC_HUE = '210'; // Ajuste a cor conforme necessário
+Blockly.Msg.LOOPS_HUE = '120'; // Ajuste a cor conforme necessário
+Blockly.Msg.MATH_HUE = '230'; // Ajuste a cor conforme necessário
+Blockly.Msg.TEXTS_HUE = '160'; // Ajuste a cor conforme necessário
+Blockly.Msg.LISTS_HUE = '260'; // Ajuste a cor conforme necessário
+Blockly.Msg.COLOUR_HUE = '20'; // Ajuste a cor conforme necessário
+Blockly.Msg.VARIABLES_HUE = '330'; // Ajuste a cor conforme necessário
+Blockly.Msg.PROCEDURES_HUE = '290'; // Ajuste a cor conforme necessário
+
+Blockly.BlockSvg.START_HAT = true;
+Blockly.BlockSvg.prototype.updateColour = function() {
+  var colourHex = this.getColour();
+  this.svgPath_.setAttribute('fill', colourHex);
+  this.svgPath_.setAttribute('stroke', Blockly.utils.colour.darken(colourHex, 0.2));
+  var inputList = this.inputList;
+  for (var i = 0, input; input = inputList[i]; i++) {
+    var fieldList = input.fieldRow;
+    for (var j = 0, field; field = fieldList[j]; j++) {
+      if (field instanceof Blockly.FieldLabel) {
+        field.setText(field.getText());
+      }
+    }
+  }
+};
+
+Blockly.FieldLabel.prototype.setText = function(text) {
+  if (this.textElement_) {
+    this.text_ = text;
+    this.textElement_.textContent = text;
+    this.textElement_.style.fontWeight = 'bold';
+    this.textElement_.style.fill = '#FFFFFF';
+  }
+};
+
+
+static/script.js:
+// static/script.js
+// Função melhorada para solicitar acesso à porta serial
+async function requestPort() {
+    try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        console.log('Porta serial aberta com sucesso');
+        return port;
+    } catch (err) {
+        if (err.name === 'SecurityError') {
+            console.error('Permissão negada para acessar a porta serial');
+            alert('Permissão para acessar a porta serial foi negada. Por favor, conceda permissão quando solicitado.');
+        } else if (err.name === 'NotFoundError') {
+            console.error('Nenhuma porta serial selecionada');
+            alert('Nenhuma porta serial foi selecionada. Por favor, selecione uma porta.');
+        } else {
+            console.error('Erro ao solicitar porta:', err);
+            alert('Ocorreu um erro ao tentar acessar a porta serial. Verifique se o Arduino está conectado corretamente.');
+        }
+        return null;
+    }
+}
+
+// Função para obter a lista de portas disponíveis
+async function getPorts() {
+    try {
+        if ('serial' in navigator) {
+            const ports = await navigator.serial.getPorts();
+            return ports;
+        } else {
+            throw new Error('Web Serial API não é suportada neste navegador.');
+        }
+    } catch (err) {
+        console.error('Erro ao obter portas:', err);
+        return [];
+    }
+}
+
+// Função para atualizar a lista de portas no dropdown
+async function updatePortList() {
+    const selectPort = document.getElementById('serial-port');
+    const ports = await navigator.serial.getPorts();
+    
+    selectPort.innerHTML = '<option value="">Selecione uma porta</option>';
+    
+    for (let port of ports) {
+        const option = document.createElement('option');
+        option.value = port.getInfo().usbVendorId;
+        option.textContent = `Porta (VendorID: ${port.getInfo().usbVendorId})`;
+        selectPort.appendChild(option);
+    }
+}
+
+async function startSerialMonitor(port) {
+    const terminal = document.getElementById('serialMonitor');
+    terminal.innerHTML = ''; // Clear the terminal
+
+    const reader = port.readable.getReader();
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+    const readerStream = textDecoder.readable.getReader();
+
+    try {
+        while (true) {
+            const { value, done } = await readerStream.read();
+            if (done) break;
+            const newLine = document.createElement('div');
+            newLine.textContent = value;
+            terminal.appendChild(newLine);
+            terminal.scrollTop = terminal.scrollHeight; // Auto-scroll
+        }
+    } catch (err) {
+        console.error('Error reading data:', err);
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+async function writeSerialData(port, data) {
+    const writer = port.writable.getWriter();
+    const textEncoder = new TextEncoder();
+    const encodedData = textEncoder.encode(data);
+    await writer.write(encodedData);
+    writer.releaseLock();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const selectPort = document.getElementById('serial-port');
+    const connectButton = document.getElementById('connect-button');
+    
+    if (connectButton) {
+        connectButton.addEventListener('click', connectToArduino);
+    }
+
+    selectPort.addEventListener('click', async function() {
+        await updatePortList();
+        
+        if (selectPort.options.length <= 1) {
+            alert('Nenhuma porta serial detectada. Verifique se o Arduino está conectado e tente novamente.');
+        }
+    });
+
+    document.getElementById('upload-button').addEventListener('click', async function () {
+        const selectPort = document.getElementById('serial-port');
+        const selectBoard = document.getElementById('board');
+        if (!selectPort || !selectBoard) {
+            console.error('Dropdown element not found');
+            return;
+        }
+        const selectedPort = selectPort.value;
+        const selectedBoard = selectBoard.value;
+        if (!selectedPort || !selectedBoard) {
+            console.error('No port or board selected');
+            return;
+        }
+
+        const code = Blockly.Arduino.workspaceToCode(Blockly.getMainWorkspace());
+
+        try {
+            const port = await requestPort();
+            await writeSerialData(port, code);
+            alert('Code uploaded successfully!');
+            startSerialMonitor(port);
+        } catch (error) {
+            console.error('Error uploading to Arduino:', error);
+            alert('Upload failed');
+        }
+    });
+
+    if (typeof Blockly === 'undefined') {
+        console.error('Blockly is not defined.');
+        return;
+    }
+
+    // Após carregar todos os blocos
+    setTimeout(() => {
+        if (Blockly.Blocks['math_change']) {
+            delete Blockly.Blocks['math_change'];
+        }
+    }, 1000); // Ajuste o tempo conforme necessário
+    
+    Blockly.Themes.blackbg = Blockly.Theme.defineTheme('blackbg', {
+        'base': Blockly.Themes.Classic,
+        'componentStyles': {
+            'workspaceBackgroundColour': '#1e1e1e',
+            'toolboxBackgroundColour': 'blackBackground',
+            'toolboxForegroundColour': '#fff',
+            'flyoutBackgroundColour': '#252526',
+            'flyoutForegroundColour': '#ccc',
+            'flyoutOpacity': 1,
+            'scrollbarColour': '#797979',
+            'insertionMarkerColour': '#fff',
+            'insertionMarkerOpacity': 0.3,
+            'scrollbarOpacity': 0.4,
+            'cursorColour': '#d0d0d0',
+            'blackBackground': '#333',
+        }
+    });
+
+    const workspace = Blockly.inject('blocklyDiv', {
+        toolbox: document.getElementById('toolbox'),
+        theme: Blockly.Themes.blackbg,
+        zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 1.0,
+            maxScale: 3,
+            minScale: 0.3,
+            scaleSpeed: 1.2
+        },
+        grid: {
+            spacing: 20,
+            length: 3,
+            colour: '#ccc',
+            snap: true
+        },
+        trashcan: true,
+    });
+
+    // Definindo Blockly.Arduino caso não esteja definido
+    if (typeof Blockly.Arduino === 'undefined') {
+        Blockly.Arduino = new Blockly.Generator('Arduino');
+        Blockly.Arduino.addReservedWords('code');
+        Blockly.Arduino.ORDER_ATOMIC = 0;
+        Blockly.Arduino.ORDER_NONE = 99;
+    }
+
+    Blockly.Variables.createVariableButtonHandler = function(workspace, opt_callback, opt_types) {
+        Blockly.prompt('Enter a name for your variable:', '', function(text) {
+            if (text) {
+                const variableTypes = opt_types || [''];
+                Blockly.Variables.getOrCreateVariablePackage(workspace, null, text, variableTypes[0]);
+                if (opt_callback) {
+                    opt_callback(text);
+                }
+                workspace.updateToolbox(document.getElementById('toolbox'));
+            }
+        });
+    };
+
+    // Adicionando o callback para o botão de criação de variável
+    workspace.registerButtonCallback('createVariable', function(button) {
+        Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace())
+            .then(() => workspace.updateToolbox(document.getElementById('toolbox')));
+    });
+
+    workspace.registerButtonCallback('createTypedVariable', function(button) {
+        Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace(), null, ['Number', 'String', 'Boolean']);
+        workspace.updateToolbox(document.getElementById('toolbox'));
+    });
+
+    let language = 'arduino';
+
+    window.updateLanguage = function () {
+        language = 'arduino';
+        Blockly.Arduino = new Blockly.Generator('Arduino');
+        Blockly.Arduino.addReservedWords('code');
+        Blockly.Arduino.nameDB_ = new Blockly.Names(Blockly.Arduino.RESERVED_WORDS_);
+        Blockly.Arduino.nameDB_.populateVariables(Blockly.Variables.allUsedVarModels(workspace));
+        Blockly.Arduino.nameDB_.populateProcedures(Blockly.Procedures.allProcedures(workspace));
+        updateCode();
+    };
+
+    //To generators
+    Blockly.Arduino.valueToCode = function(block, name, outerOrder) {
+        if (isNaN(outerOrder)) {
+            throw Error('Expecting valid order from block: ' + block);
+        }
+        var targetBlock = block.getInputTargetBlock(name);
+        if (!targetBlock) {
+            return ['', Blockly.Arduino.ORDER_ATOMIC];
+        }
+
+        var tuple = Blockly.Arduino.blockToCode(targetBlock);
+        if (!Array.isArray(tuple)) {
+            tuple = [tuple, Blockly.Arduino.ORDER_ATOMIC];
+        }
+        var code = tuple[0];
+        var innerOrder = tuple[1];
+        if (isNaN(innerOrder)) {
+            throw Error('Expecting valid order from value block: ' + targetBlock.type);
+        }
+        if (code && outerOrder <= innerOrder) {
+            code = '(' + code + ')';
+        }
+
+        return [code, innerOrder];
+    };
+
+    Blockly.Arduino.statementToCode = function(block, name) {
+      var targetBlock = block.getInputTargetBlock(name);
+      if (!targetBlock) {
+        return ''; // Se não há bloco conectado, retorna string vazia
+      }
+      var code = Blockly.Arduino.blockToCode(targetBlock);
+      if (Array.isArray(code)) {
+        code = code[0]; // Usa o primeiro elemento do array se for um array
+      }
+      return code;
+    };
+
+    Blockly.Arduino.blockToCode = function(block) {
+        if (!block) {
+            return '';
+        }
+
+        if (block.isEnabled() && !block.hasDisabledReason()) {
+            var func = this[block.type];
+            if (typeof func !== 'function') {
+                throw Error('Language "Arduino" does not know how to generate code for block type "' + block.type + '".');
+            }
+            var code = func.call(this, block);
+
+            // Se code não for um array, transforma em uma tupla
+            if (!Array.isArray(code)) {
+                code = [code, Blockly.Arduino.ORDER_ATOMIC];
+            }
+
+            // Adiciona o código dos blocos conectados abaixo
+            var nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+            var nextCode = this.blockToCode(nextBlock);
+
+            if (Array.isArray(nextBlock)) {
+                nextBlock = nextBlock[0];
+            }
+            if (Array.isArray(nextCode)) {
+                nextCode = nextCode[0];
+            }
+
+            return [code[0] + nextCode, code[1]];
+        } else {
+            return this.scrub_(block, '');
+        }
+    };
+
+    Blockly.Arduino.scrub_ = function(block, code) {
+        const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+        const nextCode = Blockly.Arduino.blockToCode(nextBlock);
+        return code + nextCode;
+    };
+
+    Blockly.Arduino.workspaceToCode = function(workspace) {
+      if (!workspace) {
+        console.warn('Blockly.Generator.workspaceToCode was called with an invalid workspace.');
+        return '';
+      }
+      var code = [];
+      this.init(workspace);
+      var blocks = workspace.getTopBlocks(true);
+      for (var i = 0, block; block = blocks[i]; i++) {
+        var line = this.blockToCode(block);
+        if (line) {
+          if (Array.isArray(line)) {
+            line = line[0];
+          }
+          code.push(line);
+        }
+      }
+      code = code.join('\n');
+      code = this.finish(code);
+      return code;
+    };
+
+    function updateCode() {
+      Blockly.Arduino.init(Blockly.getMainWorkspace());
+      var code;
+      let languageClass;
+      let generator;
+      try {
+        switch (language) {
+          case 'arduino':
+            generator = Blockly.Arduino;
+            languageClass = 'language-cpp';
+            break;
+          default:
+            generator = Blockly.Arduino;
+            languageClass = 'language-cpp';
+            break;
+        }
+
+        generator.init(workspace);
+        code = generator.workspaceToCode(Blockly.getMainWorkspace());
+
+      } catch (error) {
+        code = "// Error generating code: " + error.message;
+        languageClass = 'language-cpp';
+        console.error('Error generating code:', error);
+      }
+
+      const output = document.getElementById('code-output');
+      output.textContent = code;
+      output.className = 'hljs ' + languageClass;
+      hljs.highlightElement(output);
+    }
+
+    document.getElementById('executeBtn').addEventListener('click', async () => {
+        const code = Blockly.Arduino.workspaceToCode(workspace);
+        const selectPort = document.getElementById('serial-port');
+        const selectBoard = document.getElementById('board');
+        const port = selectPort.value;
+        const board = selectBoard.value;
+
+        if (!port) {
+            alert('Please select a serial port');
+            return;
+        }
+
+        try {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+
+            const writer = port.writable.getWriter();
+            const encoder = new TextEncoder();
+            const encodedCode = encoder.encode(code);
+            await writer.write(encodedCode);
+            writer.releaseLock();
+
+            startSerialMonitor(port);
+        } catch (error) {
+            console.error('Error uploading to Arduino:', error);
+        }
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', function () {
+        const xml = Blockly.Xml.workspaceToDom(workspace);
+        const xmlText = Blockly.Xml.domToPrettyText(xml);
+        const blob = new Blob([xmlText], {type: 'text/xml'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'blockly_blocks.xml';
+        a.click();
+    });
+
+    document.getElementById('openBtn').addEventListener('click', function () {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xml';
+        input.onchange = function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const xmlText = e.target.result;
+                    const xml = Blockly.utils.xml.textToDom(xmlText);
+                    Blockly.Xml.domToWorkspace(xml, workspace);
+                    refreshVariables(workspace);
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    });
+
+    const extensionInput = document.getElementById('extensionInput');
+
+    Blockly.getMainWorkspace().registerButtonCallback('sendExtension', function() {
+        extensionInput.click();
+    });
+
+    function getBlocksFromScript(scriptContent) {
+        const blockTypes = [];
+        const blockDefRegex = /Blockly\.Blocks\['(.*?)'\]/g;
+        let match;
+        while ((match = blockDefRegex.exec(scriptContent)) !== null) {
+            blockTypes.push(match[1]);
+        }
+        return blockTypes;
+    }
+
+    function registerExtension(scriptContent) {
+        const extensionRegex = /Blockly\.Extensions\.register\('(.*?)',\s*function\s*\(\)\s*{([\s\S]*?)}\);/g;
+        let match;
+        while ((match = extensionRegex.exec(scriptContent)) !== null) {
+            const extensionName = match[1];
+            const extensionCode = match[2];
+            try {
+                eval(`Blockly.Extensions.register('${extensionName}', function() {${extensionCode}});`);
+            } catch (error) {
+                console.error(`Error registering extension ${extensionName}:`, error);
+            }
+        }
+    }
+
+    function registerGenerators(scriptContent) {
+        function createAndRegisterGenerator(language, blockType, generatorCode) {
+            if (!Blockly[language]) {
+                Blockly[language] = {};
+            }
+            try {
+                eval(`Blockly.${language}['${blockType}'] = function(block) {${generatorCode}};`);
+            } catch (error) {
+                console.error(`Error registering ${language} generator for block: ${blockType}`, error);
+            }
+        }
+
+        const generatorRegex = /Blockly\.(\w+)\['(.*?)'\]\s*=\*\s*function\s*\(block\)\s*{([\s\S]*?)};/g;
+        let match;
+        while ((match = generatorRegex.exec(scriptContent)) !== null) {
+            const language = match[1];
+            createAndRegisterGenerator(language, match[2], match[3]);
+        }
+
+        const languages = ['Arduino'];
+        languages.forEach(language => {
+            const generatorRegex = new RegExp(`Blockly\\.${language}\\['(.*?)'\\]\\s*=\\s*function\\s*\\(block\\)\\s*{([\\s\\S]*?)};`, 'g');
+            let match;
+            while ((match = generatorRegex.exec(scriptContent)) !== null) {
+                createAndRegisterGenerator(language, match[1], match[2]);
+            }
+        });
+    }
+
+    extensionInput.addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const scriptContent = e.target.result;
+                
+                try {
+                    (new Function(scriptContent))();
+
+                    registerExtension(scriptContent);
+                    registerGenerators(scriptContent);
+
+                    const scriptName = file.name.split('.')[0];
+                    const newCategory = document.createElement('category');
+                    newCategory.setAttribute('name', scriptName);
+                    newCategory.setAttribute('colour', '160');
+
+                    const blocks = getBlocksFromScript(scriptContent);
+                    blocks.forEach(block => {
+                        const blockNode = document.createElement('block');
+                        blockNode.setAttribute('type', block);
+                        newCategory.appendChild(blockNode);
+                    });
+
+                    const extensionsCategory = document.getElementById('extensionsCategory');
+                    const sendExtensionButton = extensionsCategory.querySelector('button');
+                    extensionsCategory.insertBefore(newCategory, sendExtensionButton.nextSibling);
+
+                    workspace.updateToolbox(document.getElementById('toolbox'));
+
+                    alert("Extension loaded and registered successfully!");
+                } catch (error) {
+                    console.error("Error loading extension:", error);
+                    alert("Error loading extension:", error);
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+        function refreshVariables(workspace) {
+        const variables = Blockly.Variables.allUsedVarModels(workspace);
+        variables.sort((a, b) => a.name.localeCompare(b.name)); // Ordenar as variáveis alfabeticamente
+
+        workspace.getAllBlocks().forEach(block => {
+            if (typeof block.updateVariableFieldDropdown === 'function') {
+                block.updateVariableFieldDropdown();
+            }
+        });
+
+        if (workspace.toolbox_) {
+            workspace.toolbox_.refreshSelection();
+        }
+    }
+
+    workspace.addChangeListener(function(event) {
+        if (event.type === Blockly.Events.BLOCK_CREATE || 
+            event.type === Blockly.Events.BLOCK_DELETE || 
+            event.type === Blockly.Events.BLOCK_CHANGE || 
+            event.type === Blockly.Events.VAR_CREATE || 
+            event.type === Blockly.Events.VAR_DELETE || 
+            event.type === Blockly.Events.VAR_RENAME) {
+            refreshVariables(workspace);
+        }
+        updateCode();
+    });
+
+    workspace.addChangeListener(updateCode);
+});
+
+// Função melhorada para conectar ao Arduino
+async function connectToArduino() {
+    const selectPort = document.getElementById('serial-port');
+    const selectedPortId = selectPort.value;
+    
+    if (!selectedPortId) {
+        alert('Por favor, selecione uma porta antes de conectar.');
+        return;
+    }
+    
+    try {
+        const port = await requestPort();
+        if (port) {
+            console.log('Conectado com sucesso à porta:', port.getInfo());
+            alert('Conectado com sucesso ao Arduino!');
+            // Aqui você pode adicionar lógica adicional após a conexão bem-sucedida
+            // Por exemplo, habilitar botões de upload ou iniciar o monitor serial
+        }
+    } catch (err) {
+        console.error('Erro ao conectar à porta:', err);
+        alert('Erro ao conectar à porta selecionada. Verifique a conexão e tente novamente.');
+    }
+}
+
+static/setup.js:
+// static/script.js
+
+let workspace = null;
+
+function resizeBlocklyWorkspace() {
+    if (workspace) {
+        // Obtenha a largura atual do toolbox
+        var toolbox = document.getElementsByClassName('blocklyToolboxDiv')[0];
+        var toolboxWidth = toolbox.offsetWidth;
+
+        // Ajuste o tamanho do workspace
+        var workspaceDiv = document.getElementById('blocklyDiv');
+        var workspaceWidth = workspaceDiv.offsetWidth - toolboxWidth;
+        
+        workspace.setWidth(workspaceWidth);
+        workspace.resize();
+    }
+}
+
+function initBlockly() {
+    workspace = Blockly.inject('blocklyDiv', {
+        toolbox: document.getElementById('toolbox'),
+        scrollbars: true,
+        horizontalLayout: false,
+        toolboxPosition: 'start',
+    });
+
+    workspace.addChangeListener(updateCode);
+    
+    // Adicione um pequeno atraso para garantir que o toolbox seja renderizado completamente
+    setTimeout(resizeBlocklyWorkspace, 100);
+}
+
+function updateCode(event) {
+    var code = Blockly.JavaScript.workspaceToCode(workspace);
+    document.getElementById('code-output').textContent = code;
+    hljs.highlightElement(document.getElementById('code-output'));
+}
+
+window.addEventListener('resize', resizeBlocklyWorkspace);
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Código para redimensionamento
+    const container = document.querySelector('.main-content');
+    const outputContainer = document.getElementById('output-container');
+    const resizeHandle = document.querySelector('.resize-handle');
+    let isResizing = false;
+
+    resizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', stopResize);
+    });
+
+    function handleMouseMove(e) {
+        if (!isResizing) return;
+        const containerRect = container.getBoundingClientRect();
+        const newWidth = containerRect.right - e.clientX;
+        outputContainer.style.width = `${newWidth}px`;
+    }
+
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', stopResize);
+    }
+
+});
+
+static/style.css:
+/* static/style.css */
+
+body {
+    font-size: 18px !important; 
+    font-family: Arial, sans-serif;
+    background-color: #2b2b2b;
+    color: #f1f1f1;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #1e1e1e;
+    padding: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+}
+
+nav ul li {
+    margin: 0 15px;
+    position: relative;
+}
+
+nav ul li a {
+    color: #f1f1f1;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav ul li a:hover {
+    color: #ff9800;
+}
+
+nav ul li ul {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #1e1e1e;
+    padding: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+nav ul li:hover ul {
+    display: block;
+}
+
+nav ul li ul li {
+    margin: 0;
+}
+
+nav ul li ul li a {
+    padding: 10px 20px;
+    display: block;
+}
+
+nav ul li ul li a:hover {
+    background-color: #444;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 200px);
+    margin-bottom: 20px;
+}
+
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-right: 10px;
+}
+
+.output-container {
+    width: 300px;
+    min-width: 200px;
+    max-width: 50%;
+    position: relative;
+    background-color: #1e1e1e;
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.resize-handle {
+    position: absolute;
+    left: -5px;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    cursor: ew-resize;
+}
+
+.blockly-area {
+    flex: 1;
+    min-height: 200px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background-color: #1e1e1e;
+}
+
+#code-output {
+    width: 100%;
+    height: calc(100% - 40px);
+    border: none;
+    background-color: transparent;
+    padding: 10px;
+    overflow: auto;
+    white-space: pre;
+}
+
+.serial-monitor-container {
+    height: 200px;
+}
+
+.serial-monitor {
+    height: calc(100% - 40px);
+    width: 100%;
+    overflow-y: scroll;
+    background: #f1f1f1;
+    color: #000;
+    padding: 10px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+h2 {
+    color: #ffffff;
+}
+
+.blocklyText {
+    fill: #000000 !important;
+}
+
+select, button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #444;
+    color: #f1f1f1;
+    border: none;
+    border-radius: 4px;
+}
+
+.hljs {
+    background: #1e1e1e;
+    color: #f1f1f1;
+}
+
+.blocklyTreeLabel {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 16px !important; /* Aumenta o tamanho da fonte das categorias */
+    line-height: 1.5 !important; /* Ajusta o espaçamento entre linhas */
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+/* Ajuste o tamanho mínimo dos blocos no flyout para evitar cortes */
+.blocklyFlyoutButton {
+    min-width: 200px !important;
+}
+
+.blocklyTreeRow {
+    height: auto !important; /* Permite que a altura da linha se ajuste ao conteúdo */
+    min-height: 32px !important; /* Define uma altura mínima para as linhas */
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+}
+
+/* Aumenta o tamanho da fonte dos blocos no flyout */
+.blocklyFlyoutButton .blocklyText {
+    font-size: 14px !important;
+}
+
+.blocklyFlyoutLabelText {
+    font-size: 14px !important;
+}
+
+/* Ajusta o tamanho da fonte dos textos dentro dos blocos */
+.blocklyText {
+    font-size: 12px !important;
+}
+
+/* Ajusta o tamanho dos campos de entrada nos blocos */
+.blocklyHtmlInput {
+    font-size: 12px !important;
+}
+
+/* Aumenta o tamanho do ícone de expansão das categorias */
+.blocklyTreeIconOpen,
+.blocklyTreeIconClosed {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Ajusta o espaçamento dentro do toolbox */
+.blocklyToolboxDiv {
+    width: 250px !important; /* Aumente este valor conforme necessário */
+    padding: 5px !important;
+}
+
+/* Ajuste o layout do workspace para acomodar o toolbox mais largo */
+.blocklyWorkspace {
+    left: 250px !important; /* Deve ser o mesmo valor da largura do toolbox */
+}
+
+
+
+/* Ajustes adicionais para melhorar a aparência */
+#upload-button {
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+
+#upload-button:hover {
+    background-color: #45a049;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ddd;
+}
+
+/* Estilos para tornar a interface mais responsiva */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+
+    .editor-container, .output-container {
+        width: 100%;
+        max-width: 100%;
+        margin-right: 0;
+        margin-bottom: 20px;
+    }
+
+    .resize-handle {
+        display: none;
+    }
+}
+
+/*Controls*/
+.arduino-controls-container {
+    font-size: 18px !important; 
+    margin-bottom: 20px;
+    background-color: #333;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-group label {
+    flex: 0 0 150px;
+    margin-right: 15px;
+    color: #f1f1f1;
+}
+
+.input-button-group {
+    display: flex;
+    flex: 1;
+}
+
+.input-button-group select {
+    font-weight: bold; !important;
+    font-size: 30;
+    flex: 1;
+    margin-right: 10px;
+    padding: 8px;
+    background-color: #444;
+    color: #f1f1f1;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.input-button-group button {
+    font-weight: bold; !important;
+    font-size: 30;
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.input-button-group button:hover {
+    background-color: #45a049;
+}
+
+#connect-button {
+    background-color: #2196F3;
+}
+
+#connect-button:hover {
+    background-color: #1976D2;
+}
+
+#upload-button {
+    background-color: #FF9800;
+}
+
+#upload-button:hover {
+    background-color: #F57C00;
+}
+
+
