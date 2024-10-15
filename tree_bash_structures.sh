@@ -26,18 +26,15 @@ print_contents() {
         if [ "$entry_name" != "$SCRIPT_NAME" ] && 
            [ "$entry_name" != "$OUTPUT_FILE" ] &&
            [ "$entry_name" != "venv" ] &&
-           [ "$entry_name" != "ExternalExtensions" ] &&
-           [ "$entry_name" != "Blocks Examples" ] &&
-           [ "$entry_name" != "Figures" ] &&
-           [ "$entry_name" != "Figures" ] &&
-           [ "$entry_name" != "sketches" ] &&
-           [ "$entry_name" != "favicon.ico" ] &&
            [ "$entry_name" != "README.md" ] &&
            [ "$entry_name" != ".gitignore" ] &&
+           [ "$entry_name" != "Figures" ] &&
+           [ "$entry_name" != "ExternalExtensions" ] &&
+           [ "$entry_name" != "sketches" ] &&
+           [ "$entry_name" != "Blocks Examples" ] &&
            [ "$entry_name" != "node_modules" ] &&
-           [ "$entry_name" != "package-lock.json" ] &&
-           [ "$entry_name" != "rooms.json" ] &&
-           [ "$entry_name" != "users.json" ] &&
+           [ "$entry_name" != *.crt ] &&
+           [ "$entry_name" != *.key ] &&
            [[ "$entry_name" != *.sh ]]; then
             if [ -d "$entry" ]; then
                 # Se for um diretório, chama a função recursivamente

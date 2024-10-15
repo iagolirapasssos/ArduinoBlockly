@@ -5,7 +5,7 @@ const serialport = require('serialport');
 const fs = require('fs').promises;
 
 const app = express();
-const port = 4000; // Porta do cliente
+const port = 3000; // Porta do cliente
 
 app.use(bodyParser.json());
 

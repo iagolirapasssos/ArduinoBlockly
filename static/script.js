@@ -170,13 +170,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let selectPort = selectedPortPath;
         let selectBoard = selectedBoard;
         
-        if (!selectPort || !selectBoard) {
-            console.error('Dropdown element not found');
-            return;
-        }
+        let = selectedPort = '';
 
-        if (selectPort) selectedPort = document.getElementById('serial-port').value;
-        if (selectBoard) selectedBoard = document.getElementById('board').value;
+        if (!selectPort) selectedPort = document.getElementById('serial-port').value;
+        if (!selectBoard) selectedBoard = document.getElementById('board').value;
 
         console.log(`selectedPort: ${selectedPort} e selectedBoard: ${selectedBoard}`);
         if (!selectedPort || !selectedBoard) {
