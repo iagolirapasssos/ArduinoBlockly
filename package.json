@@ -15,7 +15,7 @@
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "ejs": "^3.1.10",
-    "express": "^4.19.2",
+    "express": "^4.21.2",
     "express-session": "^1.18.1",
     "https-localhost": "^4.7.1",
     "jsdom": "^21.1.2",
