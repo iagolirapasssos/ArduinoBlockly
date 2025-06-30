@@ -10,7 +10,7 @@
     "@blockly/field-multilineinput": "^5.0.10",
     "@blockly/theme-dark": "^7.0.1",
     "@blockly/workspace-backpack": "^6.0.2",
-    "axios": "^1.7.7",
+    "axios": "^1.8.2",
     "body-parser": "^1.20.2",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
